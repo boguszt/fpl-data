@@ -1,0 +1,35 @@
+name: FPL update
+
+on:
+  schedule:
+    - cron: "0 6,18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Sync and update
+        run: |
+          uv sync --frozen
+          uv run python ingest/update.py
+      - name: Commit raw snapshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add raw
+          if git diff --cached --quiet; then
+            echo "no raw changes"
+          else
+            git commit -m "chore: fpl raw snapshots"
+            git push
+          fi
