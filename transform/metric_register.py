@@ -10,23 +10,45 @@ import pandas as pd
 from ingest.paths import DATA, MARTS, RAW, REPO_ROOT, SEASONS
 from transform.derived import P90_METRICS, SHARE_METRICS
 from transform.load import load_style_features
-from transform.opta import DERIVED as OPTA_DERIVED
-
+from transform.metric_copy import (
+    ARCHIVE_DEFINITION,
+    FPL_COPY,
+    KNOWN_COVERAGE,
+    OPTA_COPY,
+    OPTA_COUNTS,
+    OPTA_LOWER_BETTER,
+    OPTA_RATIO_FORMULAS,
+    OPTA_RATIOS,
+    STYLE_CLUSTER_CAVEAT,
+    STYLE_CLUSTER_DEF,
+    STYLE_COPY,
+    archive_direction,
+    archive_group,
+    opta_id,
+    sentence_label,
+)
 REGISTER_COLUMNS = [
     "id",
     "label",
     "feed",
     "raw_field",
+    "definition",
+    "derived_from",
     "grain",
     "context",
     "canonical",
     "first_season",
     "last_season",
+    "coverage_note",
+    "caveat",
+    "group",
+    "direction",
     "tier",
     "used_in",
-    "derived_from",
-    "note",
 ]
+
+CURRENT_SEASON = SEASONS[-1]
+POS_LABEL = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
 # JSON keys in players_*.json / matchlogs that are the 25 default table metrics.
 CORE_WEB = {
@@ -57,54 +79,24 @@ CORE_WEB = {
     "penmissed": "penalties_missed",
 }
 
-FPL_LABELS = {
-    "goals": "Goals",
-    "assists": "Assists",
-    "xg": "Expected goals",
-    "xa": "Expected assists",
-    "xgi": "Expected goal involvements",
-    "xgc": "Expected goals conceded",
-    "tackles": "Tackles",
-    "recoveries": "Recoveries",
-    "clearances_blocks_interceptions": "Clearances / blocks / interceptions",
-    "defensive_contribution": "Defensive contribution",
-    "saves": "Saves",
-    "goals_conceded": "Goals conceded",
-    "clean_sheets": "Clean sheets",
-    "penalties_saved": "Penalties saved",
-    "penalties_missed": "Penalties missed",
-    "total_points": "Total points",
-    "bps": "Bonus point system",
-    "bonus": "Bonus",
-    "influence": "Influence",
-    "creativity": "Creativity",
-    "threat": "Threat",
-    "ict_index": "ICT Index",
-    "yellow_cards": "Yellow cards",
-    "red_cards": "Red cards",
-    "own_goals": "Own goals",
-    "minutes": "Minutes",
-    "starts": "Starts",
-    "appearances": "Appearances",
-    "appearances_60_plus": "Appearances 60+",
-    "team_minutes_available": "Team minutes available",
-    "minutes_share": "Minutes share of team",
-    "price": "Price",
-    "ownership": "Ownership",
-}
-
 # Same football action, different feeds. Flag if both canonical at one (grain, context).
 CONCEPT_ALIASES = {
-    "tackles": ("tackles", "total_tackle", "won_tackle"),
-    "recoveries": ("recoveries", "ball_recovery"),
-    "goals": ("goals", "goals_scored"),
-    "assists": ("assists", "goal_assist"),
+    "tackles": ("tackles", "o_total_tackle", "o_won_tackle"),
+    "recoveries": ("recoveries", "o_ball_recovery"),
+    "goals": ("goals", "o_goals"),
+    "assists": ("assists", "o_goal_assist"),
     "clearances": (
         "clearances_blocks_interceptions",
-        "effective_clearance",
-        "total_clearance",
+        "o_effective_clearance",
+        "o_total_clearance",
     ),
-    "interceptions": ("interception", "interception_won"),
+    "interceptions": ("o_interception", "o_interception_won"),
+    "saves": ("saves", "o_saves"),
+    "clean_sheets": ("clean_sheets", "o_clean_sheet"),
+    "goals_conceded": ("goals_conceded", "o_goals_conceded"),
+    "yellow_cards": ("yellow_cards", "o_yellow_card"),
+    "red_cards": ("red_cards", "o_red_card"),
+    "own_goals": ("own_goals", "o_own_goals"),
 }
 
 FPL_FEEDS = {"fpl", "vaastav", "fplcache"}
@@ -152,6 +144,23 @@ IDENTITY_KEYS = {
     "end",
 }
 
+LIVE_VASTAV_NOTE = (
+    "vaastav merged_gw carries FPL GW stats when no live file exists; "
+    "event/{gw}/live/ wins for a (season, gw) that has a file"
+)
+
+FPL_RAW_LIVE = {
+    "xg": "event.live.stats.expected_goals",
+    "xa": "event.live.stats.expected_assists",
+    "xgi": "event.live.stats.expected_goal_involvements",
+    "xgc": "event.live.stats.expected_goals_conceded",
+    "goals": "event.live.stats.goals_scored",
+    "yellow_cards": "event.live.stats.yellow_cards",
+    "red_cards": "event.live.stats.red_cards",
+    "ict_index": "event.live.stats.ict_index",
+    "total_points": "event.live.stats.total_points",
+}
+
 
 def _parquet(name: str) -> Path:
     return MARTS / f"{name}.parquet"
@@ -180,13 +189,40 @@ def _used(*parts: str) -> str:
     return ",".join(seen) if seen else "none"
 
 
+def _last(last: str | None) -> str:
+    if not last:
+        return ""
+    return "" if str(last) == CURRENT_SEASON else str(last)
+
+
+def _coverage_note(mid: str, gap: str = "", extra: str = "") -> str:
+    bits: list[str] = []
+    alts = [mid]
+    if mid.startswith("o_"):
+        alts.append(mid[2:])
+    else:
+        alts.append(f"o_{mid}")
+    known = next((KNOWN_COVERAGE[k] for k in alts if k in KNOWN_COVERAGE), None)
+    if known:
+        bits.append(known)
+    elif gap:
+        bits.append(gap)
+    if extra:
+        bits.append(extra)
+    return " ".join(bits)
+
+
 def _row(**kwargs) -> dict:
     rec = {c: kwargs.get(c, "") for c in REGISTER_COLUMNS}
     rec["canonical"] = int(kwargs.get("canonical", 0))
+    rec["direction"] = int(kwargs.get("direction", 1) or 1)
     rec["first_season"] = kwargs.get("first_season") or ""
-    rec["last_season"] = kwargs.get("last_season") or ""
+    rec["last_season"] = _last(kwargs.get("last_season") or "")
     rec["derived_from"] = kwargs.get("derived_from") or ""
-    rec["note"] = kwargs.get("note") or ""
+    rec["definition"] = kwargs.get("definition") or ""
+    rec["coverage_note"] = kwargs.get("coverage_note") or ""
+    rec["caveat"] = kwargs.get("caveat") or ""
+    rec["group"] = kwargs.get("group") or ""
     rec["used_in"] = kwargs.get("used_in") or "none"
     rec["tier"] = kwargs.get("tier") or "archive"
     rec["context"] = kwargs.get("context") or "football"
@@ -213,6 +249,51 @@ def _read(name: str, columns: list[str] | None = None) -> pd.DataFrame:
     if not cols:
         return pd.DataFrame()
     return pd.read_parquet(path, columns=cols)
+
+
+def _fpl_copy(mid: str) -> tuple[str, str, str, str, int]:
+    if mid in FPL_COPY:
+        return FPL_COPY[mid]
+    return sentence_label(mid), "", "", "Fantasy", 1
+
+
+def _shrinkage_k_text() -> str:
+    path = _parquet("dim_shrinkage")
+    if not path.exists():
+        return (
+            "dim_shrinkage was not available when this register was built. "
+            "The marts fall back to k=10; the frontend also has its own k constants."
+        )
+    df = pd.read_parquet(path)
+    if df.empty or "k" not in df.columns:
+        return (
+            "dim_shrinkage is empty. The marts fall back to k=10; "
+            "the frontend also has its own k constants."
+        )
+    latest = (
+        df.sort_values("season")
+        .groupby(["metric", "element_type"], as_index=False)
+        .last()
+    )
+    parts: list[str] = []
+    for metric, g in latest.groupby("metric"):
+        bits: list[str] = []
+        for rec in g.sort_values("element_type").to_dict("records"):
+            pos = POS_LABEL.get(int(rec["element_type"]), str(int(rec["element_type"])))
+            method = str(rec.get("method") or "").strip()
+            try:
+                k_val = float(rec["k"])
+                k_s = str(int(k_val)) if k_val.is_integer() else f"{k_val:.1f}"
+            except (TypeError, ValueError):
+                k_s = str(rec["k"])
+            bits.append(f"{pos} k={k_s}" + (f" ({method})" if method else ""))
+        parts.append(f"{metric}: " + "; ".join(bits) + ".")
+    return (
+        "Fitted k from dim_shrinkage, constant across seasons for each "
+        "(metric, position); the pool mean is still (season, position). "
+        "The frontend also has its own k constants on METRICS. "
+        + " ".join(parts)
+    )
 
 
 def build_metric_register() -> pd.DataFrame:
@@ -265,12 +346,9 @@ def build_metric_register() -> pd.DataFrame:
     metrics = _read("fact_player_season_metrics")
     spec = load_style_features()
     rows: list[dict] = []
+    unconfident: list[str] = []
 
     core_ids = set(CORE_WEB.values())
-    style_names = [str(n) for n in spec["name"]]
-    cluster_names = {
-        str(n) for n, flag in zip(spec["name"], spec["in_clustering"]) if int(flag) == 1
-    }
     style_inputs: set[str] = set()
     for _, r in spec.iterrows():
         for expr in (str(r["numerator"]), str(r["denominator"])):
@@ -281,7 +359,6 @@ def build_metric_register() -> pd.DataFrame:
                 if tok:
                     style_inputs.add(tok)
 
-    # --- FPL counting / scoring stats (GW + season) ---
     gw_col = {
         "xg": "expected_goals",
         "xa": "expected_assists",
@@ -292,146 +369,163 @@ def build_metric_register() -> pd.DataFrame:
         "ict_index": "ict_index",
     }
     football_fpl = {"xg", "xa", "xgi", "xgc"}
-    for mid in core_ids | {"minutes", "starts"}:
+    playing_time = {"minutes", "starts"}
+
+    for mid in core_ids | playing_time:
         col = gw_col.get(mid, mid)
         first, last, gap = _coverage(gw, col)
-        ctx = "football" if mid in football_fpl else "fantasy"
         if mid in football_fpl:
             ctx = "both"
-        note_bits = [
-            "vaastav merged_gw carries FPL GW stats when no live file exists; "
-            "event/{gw}/live/ wins for a (season, gw) that has a file"
-        ]
-        if gap:
-            note_bits.append(gap)
-        if mid == "defensive_contribution":
-            note_bits.append(
-                "Fantasy always uses FPL defensive_contribution — that is what scored "
-                "the points. Opta tackles/interceptions/clearances are a different "
-                "canonical measurement in the football context, not a correction."
-            )
-        if mid in {"tackles", "recoveries", "clearances_blocks_interceptions"}:
-            note_bits.append(
-                "FPL and Opta both count this action and will not agree. "
-                "Do not fill a gap in one feed from the other."
-            )
-        used_gw = _used("profile", "percentile" if mid in core_ids else "", "shrinkage" if mid in P90_METRICS else "")
-        used_season = _used(
-            "table" if mid in core_ids else "",
+        elif mid in playing_time:
+            ctx = "both"
+        else:
+            ctx = "fantasy"
+        label, definition, caveat, group, direction = _fpl_copy(mid)
+        if not definition:
+            unconfident.append(mid)
+        extra = LIVE_VASTAV_NOTE
+        used_gw = _used(
+            "profile",
             "percentile" if mid in core_ids else "",
             "shrinkage" if mid in P90_METRICS else "",
         )
-        raw_live = {
-            "xg": "event.live.stats.expected_goals",
-            "xa": "event.live.stats.expected_assists",
-            "xgi": "event.live.stats.expected_goal_involvements",
-            "xgc": "event.live.stats.expected_goals_conceded",
-            "goals": "event.live.stats.goals_scored",
-            "yellow_cards": "event.live.stats.yellow_cards",
-            "red_cards": "event.live.stats.red_cards",
-            "ict_index": "event.live.stats.ict_index",
-            "total_points": "event.live.stats.total_points",
-        }.get(mid, f"event.live.stats.{col}")
+        used_season = _used(
+            "table" if mid in core_ids else "table",
+            "percentile" if mid in core_ids else "",
+            "shrinkage" if mid in P90_METRICS else "",
+        )
+        raw_live = FPL_RAW_LIVE.get(mid, f"event.live.stats.{col}")
         rows.append(
             _row(
                 id=mid,
-                label=FPL_LABELS.get(mid, mid),
+                label=label,
                 feed="fpl",
                 raw_field=raw_live,
+                definition=definition,
                 grain="gameweek",
                 context=ctx,
                 canonical=1,
                 first_season=first,
                 last_season=last,
+                coverage_note=_coverage_note(mid, gap, extra),
+                caveat=caveat,
+                group=group,
+                direction=direction,
                 tier="core" if mid in core_ids else "extended",
                 used_in=used_gw,
-                note="; ".join(note_bits),
             )
         )
         rows.append(
             _row(
                 id=mid,
-                label=FPL_LABELS.get(mid, mid),
+                label=label,
                 feed="fpl",
                 raw_field=f"sum(fact_player_gw.{col})",
+                definition=definition,
                 grain="season",
                 context=ctx,
                 canonical=1,
                 first_season=first,
                 last_season=last,
+                coverage_note=_coverage_note(mid, gap, extra),
+                caveat=caveat,
+                group=group,
+                direction=direction,
                 tier="core" if mid in core_ids else "extended",
                 used_in=used_season if used_season != "none" else "table",
-                note="; ".join(note_bits),
             )
         )
 
-    # Availability (season)
     av = _read(
         "fact_player_season_availability",
-        ["season", "minutes", "appearances", "starts", "appearances_60_plus", "team_minutes_available", "minutes_share"],
+        [
+            "season",
+            "minutes",
+            "appearances",
+            "starts",
+            "appearances_60_plus",
+            "team_minutes_available",
+            "minutes_share",
+        ],
     )
     for mid, col, derived in (
-        ("appearances", "appearances", "count of matches with minutes>0"),
-        ("appearances_60_plus", "appearances_60_plus", "count of matches with minutes>=60"),
+        ("appearances", "appearances", "count of matches with minutes > 0"),
+        ("appearances_60_plus", "appearances_60_plus", "count of matches with minutes >= 60"),
         ("team_minutes_available", "team_minutes_available", "sum of club fixture minutes while at the club"),
         ("minutes_share", "minutes_share", "minutes / team_minutes_available"),
     ):
         first, last, gap = _coverage(av, col)
+        label, definition, caveat, group, direction = _fpl_copy(mid)
+        if not definition:
+            unconfident.append(mid)
         rows.append(
             _row(
                 id=mid,
-                label=FPL_LABELS.get(mid, mid),
+                label=label,
                 feed="derived",
                 raw_field=f"fact_player_season_availability.{col}",
+                definition=definition,
+                derived_from=derived,
                 grain="season",
                 context="both",
                 canonical=1,
                 first_season=first,
                 last_season=last,
+                coverage_note=_coverage_note(mid, gap),
+                caveat=caveat,
+                group=group,
+                direction=direction,
                 tier="extended",
                 used_in="table",
-                derived_from=derived,
-                note=gap,
             )
         )
 
-    # Price / ownership from snapshots (exported); raw snap columns are archive.
-    first_p, last_p, _ = _coverage(snap, "now_cost")
+    first_p, last_p, gap_p = _coverage(snap, "now_cost")
+    label, definition, caveat, group, direction = _fpl_copy("price")
     rows.append(
         _row(
             id="price",
-            label="Price",
+            label=label,
             feed="fplcache",
             raw_field="snap_player_day.now_cost / 10",
+            definition=definition,
+            derived_from="now_cost / 10",
             grain="snapshot",
             context="fantasy",
             canonical=1,
             first_season=first_p,
             last_season=last_p,
+            coverage_note=_coverage_note("price", gap_p),
+            caveat=caveat,
+            group=group,
+            direction=direction,
             tier="extended",
             used_in="table,profile",
-            derived_from="now_cost / 10",
-            note="fplcache fills historical days; own bootstrap snapshots cover the current season. Both are FPL. NULL before 2021-22 in web export.",
         )
     )
-    first_o, last_o, _ = _coverage(snap, "selected_by_percent")
+    first_o, last_o, gap_o = _coverage(snap, "selected_by_percent")
+    label, definition, caveat, group, direction = _fpl_copy("ownership")
     rows.append(
         _row(
             id="ownership",
-            label="Ownership",
+            label=label,
             feed="fplcache",
             raw_field="snap_player_day.selected_by_percent",
+            definition=definition,
             grain="snapshot",
             context="fantasy",
             canonical=1,
             first_season=first_o,
             last_season=last_o,
+            coverage_note=_coverage_note("ownership", gap_o),
+            caveat=caveat,
+            group=group,
+            direction=direction,
             tier="extended",
             used_in="table",
-            note="percentage points. own_7d / own_30d are deltas vs T-7d / T-30d snapshots.",
         )
     )
-    for col, label in (
+    for col, snap_label in (
         ("transfers_in_event", "Transfers in (GW)"),
         ("transfers_out_event", "Transfers out (GW)"),
         ("status", "Availability status"),
@@ -439,153 +533,251 @@ def build_metric_register() -> pd.DataFrame:
         ("news", "News"),
     ):
         first, last, _ = _coverage(snap, col)
+        unconfident.append(col)
         rows.append(
             _row(
                 id=col,
-                label=label,
+                label=snap_label,
                 feed="fplcache",
                 raw_field=f"bootstrap.elements.{col}",
+                definition="Bootstrap snapshot field. Not exported to the player table.",
                 grain="snapshot",
                 context="fantasy",
                 canonical=1,
                 first_season=first,
                 last_season=last,
+                coverage_note="snap_player_day only. Never exported to web/data.",
+                caveat="",
+                group="Fantasy",
+                direction=1,
                 tier="archive",
                 used_in="none",
-                note="snap_player_day only. Never exported to web/data.",
             )
         )
 
-    # Derived FPL rates (mart only)
     for m in P90_METRICS:
+        parent = _fpl_copy(m)
+        ctx = "both" if m in football_fpl else "fantasy"
         first, last, gap = _coverage(metrics, f"{m}_p90") if not metrics.empty else (None, None, "")
         rows.append(
             _row(
                 id=f"{m}_p90",
-                label=f"{FPL_LABELS.get(m, m)} per 90",
+                label=f"{parent[0]} per 90",
                 feed="derived",
                 raw_field=f"fact_player_season_metrics.{m}_p90",
+                definition=(
+                    f"The {parent[0].lower()} total divided by minutes and scaled to 90. "
+                    "The frontend derives this itself from the season total and minutes; "
+                    "the mart stores the same formula."
+                ),
+                derived_from=f"{m}_total / minutes_total × 90",
                 grain="season",
-                context="fantasy" if m not in football_fpl else "both",
+                context=ctx,
                 canonical=1,
                 first_season=first,
                 last_season=last,
+                coverage_note=_coverage_note(m, gap),
+                caveat=parent[2],
+                group=parent[3],
+                direction=parent[4],
                 tier="extended",
                 used_in="shrinkage",
-                derived_from=f"{m}_total / minutes_total * 90",
-                note=gap,
             )
         )
         first, last, gap = _coverage(metrics, f"{m}_adj90") if not metrics.empty else (None, None, "")
         rows.append(
             _row(
                 id=f"{m}_adj90",
-                label=f"{FPL_LABELS.get(m, m)} adj90",
+                label=f"{parent[0]} adjusted per 90",
                 feed="derived",
                 raw_field=f"fact_player_season_metrics.{m}_adj90",
+                definition=(
+                    f"The adjusted per-90 of {parent[0].lower()}. See adjusted_per_90 "
+                    "for the formula and the fitted k."
+                ),
+                derived_from=f"(total + k × pool_mean) / (nineties + k) on {m}",
                 grain="season",
-                context="fantasy" if m not in football_fpl else "both",
+                context=ctx,
                 canonical=1,
                 first_season=first,
                 last_season=last,
+                coverage_note=_coverage_note(m, gap),
+                caveat=parent[2],
+                group=parent[3],
+                direction=parent[4],
                 tier="extended",
                 used_in="shrinkage,percentile",
-                derived_from=f"EB shrink of {m}_p90 toward (season, position) mean",
-                note=gap,
             )
         )
     for m in SHARE_METRICS:
+        parent = _fpl_copy(m)
+        ctx = "both" if m in football_fpl else "fantasy"
         first, last, gap = _coverage(metrics, f"{m}_share") if not metrics.empty else (None, None, "")
         rows.append(
             _row(
                 id=f"{m}_share",
-                label=f"{FPL_LABELS.get(m, m)} share of team",
+                label=f"{parent[0]} share of team",
                 feed="derived",
                 raw_field=f"fact_player_season_metrics.{m}_share",
+                definition=(
+                    f"This player's {parent[0].lower()} as a proportion of the club's "
+                    "total in the same matches. See share_of_team."
+                ),
+                derived_from=f"player {m} / team {m} over GWs at the club",
                 grain="season",
-                context="fantasy" if m not in football_fpl else "both",
+                context=ctx,
                 canonical=1,
                 first_season=first,
                 last_season=last,
+                coverage_note=_coverage_note("share_of_team", gap),
+                caveat="NULL for players who changed club mid-season.",
+                group=parent[3],
+                direction=parent[4],
                 tier="extended",
                 used_in="percentile",
-                derived_from=f"player {m} / team {m} over GWs at the club",
-                note=gap,
             )
         )
 
-    # Style features (derived Opta ratios)
+    # Style features (derived Opta ratios). Prefix o_. Skip the five Opta DERIVED
+    # ratios — those ship from fact_player_season_opta without the style floors.
     for _, spec_row in spec.iterrows():
         name = str(spec_row["name"])
+        if name in OPTA_RATIOS:
+            continue
+        oid = opta_id(name)
         first, last, gap = _coverage(style, name)
         in_cl = int(spec_row["in_clustering"] or 0) == 1
-        note_bits = []
+        if name in STYLE_COPY:
+            label, definition, caveat, group = STYLE_COPY[name]
+        else:
+            label, definition, caveat, group = sentence_label(name), "", "", "Passing"
+            unconfident.append(oid)
+        extra = ""
         if not in_cl:
-            note_bits.append(
-                "in_clustering=0 because this measures quality, not style; "
-                "clustering describes shape."
-            )
-        spec_first = spec_row.get("first_season")
-        if pd.notna(spec_first) and str(spec_first).strip():
-            note_bits.append(
-                f"spec first_season={spec_first}; observed coverage below is from the mart"
-            )
-        if gap:
-            note_bits.append(gap)
+            extra = "Excluded from clustering because it measures quality, not shape."
         rows.append(
             _row(
-                id=name,
-                label=name.replace("_", " "),
+                id=oid,
+                label=label,
                 feed="derived",
                 raw_field=f"plstats.{spec_row['numerator']} / plstats.{spec_row['denominator']}",
+                definition=definition,
+                derived_from=f"{spec_row['numerator']} / {spec_row['denominator']}",
                 grain="season",
                 context="football",
                 canonical=1,
                 first_season=first,
                 last_season=last,
+                coverage_note=_coverage_note(oid, gap, extra),
+                caveat=caveat,
+                group=group,
+                direction=-1 if "loss" in name else 1,
                 tier="extended",
-                used_in="clustering" if in_cl else "none",
-                derived_from=f"{spec_row['numerator']} / {spec_row['denominator']}",
-                note="; ".join(note_bits),
+                used_in="table,clustering" if in_cl else "table",
             )
         )
 
-    # Opta season totals — archive unless a style input (the ratio is canonical, the count stays)
-    skip_opta = {"season", "player_code", "pulse_id"} | set(style_names) | set(OPTA_DERIVED)
+    shipped_opta = set(OPTA_COUNTS) | set(OPTA_RATIOS)
+    skip_opta = {"season", "player_code", "pulse_id"}
     if not opta.empty:
-        for col in opta.columns:
-            if col in skip_opta:
-                continue
+        for col, group in OPTA_COUNTS.items():
             first, last, gap = _coverage(opta, col)
-            used = "clustering" if col in style_inputs else "none"
-            note_bits = ["Pulse season totals. Verbatim API; omitted zeros filled only in style.py."]
-            if col in style_inputs:
-                note_bits.append("numerator/denominator for a style feature; the ratio is the exported metric.")
-            if gap:
-                note_bits.append(gap)
+            oid = opta_id(col)
+            if col in OPTA_COPY:
+                label, definition, caveat = OPTA_COPY[col]
+            else:
+                label, definition, caveat = sentence_label(col), "", ""
+                unconfident.append(oid)
+            used = "table,clustering" if col in style_inputs else "table"
+            extra = "Pulse season totals. Verbatim API; omitted zeros stay NULL."
             rows.append(
                 _row(
-                    id=col,
-                    label=col.replace("_", " "),
+                    id=oid,
+                    label=label,
                     feed="opta",
                     raw_field=f"plstats.{col}",
+                    definition=definition,
                     grain="season",
                     context="football",
                     canonical=1,
                     first_season=first,
                     last_season=last,
-                    tier="archive",
+                    coverage_note=_coverage_note(oid, gap, extra),
+                    caveat=caveat,
+                    group=group,
+                    direction=-1 if col in OPTA_LOWER_BETTER else 1,
+                    tier="extended",
                     used_in=used,
-                    note="; ".join(note_bits),
+                )
+            )
+        for col, group in OPTA_RATIOS.items():
+            first, last, gap = _coverage(opta, col)
+            oid = opta_id(col)
+            if col in OPTA_COPY:
+                label, definition, caveat = OPTA_COPY[col]
+            else:
+                label, definition, caveat = sentence_label(col), "", ""
+                unconfident.append(oid)
+            extra = "NULL when the denominator is zero. Pulse season grain only."
+            rows.append(
+                _row(
+                    id=oid,
+                    label=label,
+                    feed="opta",
+                    raw_field=f"plstats.{OPTA_RATIO_FORMULAS[col].split('/')[0].strip()} / …",
+                    definition=definition,
+                    derived_from=OPTA_RATIO_FORMULAS[col],
+                    grain="season",
+                    context="football",
+                    canonical=1,
+                    first_season=first,
+                    last_season=last,
+                    coverage_note=_coverage_note(oid, gap, extra),
+                    caveat=caveat,
+                    group=group,
+                    direction=1,
+                    tier="extended",
+                    used_in="table",
+                )
+            )
+        for col in opta.columns:
+            if col in skip_opta or col in shipped_opta:
+                continue
+            first, last, gap = _coverage(opta, col)
+            oid = opta_id(col)
+            unconfident.append(oid)
+            extra = "Pulse season totals. Verbatim API; omitted zeros stay NULL. Not exported to web/data."
+            rows.append(
+                _row(
+                    id=oid,
+                    label=sentence_label(col),
+                    feed="opta",
+                    raw_field=f"plstats.{col}",
+                    definition=ARCHIVE_DEFINITION,
+                    grain="season",
+                    context="football",
+                    canonical=1,
+                    first_season=first,
+                    last_season=last,
+                    coverage_note=_coverage_note(oid, gap, extra),
+                    caveat="",
+                    group=archive_group(col),
+                    direction=archive_direction(col),
+                    tier="archive",
+                    used_in="clustering" if col in style_inputs else "none",
                 )
             )
 
-    # Explain identifiers at fixture grain (live files only)
     from transform.explain import explain_labels
 
     labels = explain_labels()
     live_first, live_last = _live_season_span()
-    for ident, label in labels.items():
+    live_extra = (
+        "Points breakdown per fixture from event/{gw}/live/ explain[]. "
+        "Omitted from matchlogs when the GW has no live file. "
+        "Every component FPL returned is kept, including zero-point minutes."
+    )
+    for ident, expl_label in labels.items():
         mapped = {
             "goals_scored": "goals",
             "yellow_cards": "yellow_cards",
@@ -612,27 +804,154 @@ def build_metric_register() -> pd.DataFrame:
             "clearances_blocks_interceptions",
         }:
             continue
+        label, definition, caveat, group, direction = _fpl_copy(mapped)
+        if not definition:
+            definition = f"FPL explain component labelled '{expl_label}'."
+            unconfident.append(f"{mapped}@fixture")
         rows.append(
             _row(
                 id=mapped,
-                label=label,
+                label=label if mapped in FPL_COPY else expl_label,
                 feed="fpl",
                 raw_field=f"event.live.explain[].stats.{ident}",
+                definition=definition,
                 grain="fixture",
                 context="fantasy",
                 canonical=1,
                 first_season=live_first,
                 last_season=live_last,
+                coverage_note=_coverage_note(mapped, "", live_extra),
+                caveat=caveat,
+                group=group,
+                direction=direction,
                 tier="core" if mapped in core_ids else "extended",
                 used_in="profile",
-                note="points breakdown per fixture. Omitted from matchlogs when the GW has no live file. Include every component FPL returned, including zero-point minutes.",
             )
         )
 
+    k_text = _shrinkage_k_text()
+    rows.append(
+        _row(
+            id="adjusted_per_90",
+            label="Adjusted per 90",
+            feed="derived",
+            raw_field="fact_player_season_metrics.{metric}_adj90",
+            definition=(
+                "The per-90 rate pulled toward the positional average by an amount set "
+                "by how few minutes the player has. A full season barely moves; a few "
+                "hundred minutes moves a long way. "
+                + k_text
+            ),
+            derived_from="(total + k × pool_mean) / (nineties + k)",
+            grain="season",
+            context="both",
+            canonical=1,
+            first_season=SEASONS[0],
+            last_season=CURRENT_SEASON,
+            coverage_note=(
+                "Fitted on FPL counting stats only. Opta season totals are not shrunk "
+                "in the marts; the frontend may apply its own k if it rates them."
+            ),
+            caveat=(
+                "k is a sample-size weight, not a quality judgement. Extreme fallback "
+                "values (own goals, reds) mean the split-half had almost no signal — "
+                "read those adjusted rates as 'almost the positional mean'."
+            ),
+            group="Fantasy",
+            direction=1,
+            tier="extended",
+            used_in="shrinkage,percentile",
+        )
+    )
+    rows.append(
+        _row(
+            id="percentile",
+            label="Percentile",
+            feed="derived",
+            raw_field="frontend rank of adjusted_per_90",
+            definition=(
+                "Rank position expressed 0–100 against same-position players clearing "
+                "the minutes floor, on the adjusted rate."
+            ),
+            derived_from="percentile rank of adjusted_per_90 within (season, position) after the minutes floor",
+            grain="season",
+            context="both",
+            canonical=1,
+            first_season=SEASONS[0],
+            last_season=CURRENT_SEASON,
+            coverage_note="Computed in the frontend against the current filtered set, not stored in the marts.",
+            caveat=(
+                "A 90th percentile in a 12-player filter is not the same claim as in "
+                "the whole league. Direction is already applied: 100 is always 'good'."
+            ),
+            group="Fantasy",
+            direction=1,
+            tier="extended",
+            used_in="percentile",
+        )
+    )
+    rows.append(
+        _row(
+            id="share_of_team",
+            label="Share of team",
+            feed="derived",
+            raw_field="fact_player_season_metrics.{metric}_share",
+            definition=(
+                "The player's output as a proportion of their club's total in the same "
+                "matches. NULL for players who changed club mid-season."
+            ),
+            derived_from="player total / club total over the gameweeks the player was registered at that club",
+            grain="season",
+            context="both",
+            canonical=1,
+            first_season="2020-21",
+            last_season=CURRENT_SEASON,
+            coverage_note=_coverage_note("share_of_team"),
+            caveat=(
+                "A mid-season move cannot be split on the Pulse row either: Opta team "
+                "shares are also NULL for movers. Do not approximate."
+            ),
+            group="Fantasy",
+            direction=1,
+            tier="extended",
+            used_in="percentile",
+        )
+    )
+    cluster_first, cluster_last, cluster_gap = _coverage(
+        _read("fact_player_cluster", ["season", "cluster_id"]), "cluster_id"
+    )
+    rows.append(
+        _row(
+            id="style_cluster",
+            label="Style cluster",
+            feed="derived",
+            raw_field="fact_player_cluster.cluster_id",
+            definition=STYLE_CLUSTER_DEF,
+            derived_from="k-means (k=9) on z-scored style ratios, fit once on complete outfield cases",
+            grain="season",
+            context="football",
+            canonical=1,
+            first_season=cluster_first,
+            last_season=cluster_last,
+            coverage_note=_coverage_note(
+                "style_cluster",
+                cluster_gap,
+                "Keepers and managers are excluded. Carries are not league-wide until 2024-25, so most assignments sit in 2024-25 onward.",
+            ),
+            caveat=STYLE_CLUSTER_CAVEAT,
+            group="Territory",
+            direction=1,
+            tier="extended",
+            used_in="clustering",
+        )
+    )
+
     out = pd.DataFrame(rows, columns=REGISTER_COLUMNS)
     out["canonical"] = pd.to_numeric(out["canonical"], errors="coerce").fillna(0).astype(int)
+    out["direction"] = pd.to_numeric(out["direction"], errors="coerce").fillna(1).astype(int)
     out = out.drop_duplicates(subset=["id", "grain", "context", "feed"], keep="first")
     out = out.sort_values(["tier", "grain", "id", "context"]).reset_index(drop=True)
+    out.attrs["unconfident"] = sorted(set(unconfident))
     return out
 
 
@@ -662,7 +981,17 @@ def write_metrics_register_json(df: pd.DataFrame, dest: Path | None = None) -> P
     payload = df.to_dict(orient="records")
     for rec in payload:
         rec["canonical"] = int(rec["canonical"])
-        for k in ("first_season", "last_season", "derived_from", "note", "used_in"):
+        rec["direction"] = int(rec.get("direction") or 1)
+        for k in (
+            "first_season",
+            "last_season",
+            "derived_from",
+            "definition",
+            "coverage_note",
+            "caveat",
+            "group",
+            "used_in",
+        ):
             if rec.get(k) is None:
                 rec[k] = ""
     encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
@@ -680,7 +1009,9 @@ def flag_dual_canonical(df: pd.DataFrame) -> list[str]:
             id_to_concept[n] = concept
     work = df.loc[df["canonical"] == 1].copy()
     work["concept"] = work["id"].map(lambda i: id_to_concept.get(str(i), str(i)))
-    work["family"] = work["feed"].map(lambda f: "opta" if f == "opta" else ("fpl" if f in FPL_FEEDS else f))
+    work["family"] = work["feed"].map(
+        lambda f: "opta" if f == "opta" else ("fpl" if f in FPL_FEEDS else f)
+    )
     for (grain, context, concept), g in work.groupby(["grain", "context", "concept"], dropna=False):
         families = set(g["family"])
         if "fpl" in families and "opta" in families:
@@ -688,13 +1019,26 @@ def flag_dual_canonical(df: pd.DataFrame) -> list[str]:
             flags.append(
                 f"DUAL CANONICAL {concept} at grain={grain} context={context}: {ids}"
             )
-    # Same id, grain, context, two canonical feeds
     for (mid, grain, context), g in work.groupby(["id", "grain", "context"], dropna=False):
         feeds = sorted(set(g["feed"].astype(str)))
         if len(feeds) > 1:
             flags.append(
                 f"DUAL CANONICAL id={mid} grain={grain} context={context} feeds={feeds}"
             )
+    return flags
+
+
+def flag_key_collisions(df: pd.DataFrame) -> list[str]:
+    """Opta ids must be o_-prefixed and must not equal an FPL-family id."""
+    flags: list[str] = []
+    opta = df.loc[df["feed"] == "opta", "id"].astype(str)
+    bare = [i for i in opta if not i.startswith("o_")]
+    if bare:
+        flags.append("opta ids missing o_ prefix: " + ", ".join(sorted(set(bare))[:20]))
+    fpl_ids = set(df.loc[df["feed"].isin(FPL_FEEDS | {"fpl"}), "id"].astype(str))
+    overlap = sorted(set(opta) & fpl_ids)
+    if overlap:
+        flags.append("feed key collision: " + ", ".join(overlap[:20]))
     return flags
 
 
@@ -742,7 +1086,6 @@ def json_key_to_id(key: str) -> str | None:
         base = key[: -len("_team")]
         if base in CORE_WEB:
             return CORE_WEB[base]
-        return key
     if key in CORE_WEB:
         return CORE_WEB[key]
     if key in {"price_now", "price_start", "price_delta", "price"}:
@@ -755,16 +1098,19 @@ def json_key_to_id(key: str) -> str | None:
         return "appearances_60_plus"
     if key == "team_minutes":
         return "team_minutes_available"
+    if key in STYLE_COPY or key in OPTA_COUNTS or key in OPTA_RATIOS:
+        return opta_id(key)
     return key
 
 
 def validate_metric_register(df: pd.DataFrame, web_dir: Path | None = None) -> list[str]:
     errors: list[str] = []
-    flags = flag_dual_canonical(df)
-    for f in flags:
+    errors.extend(flag_dual_canonical(df))
+    for f in flag_key_collisions(df):
+        if f.startswith("o_ prefix is the only thing"):
+            continue
         errors.append(f)
 
-    ids = set(zip(df["id"].astype(str), df["grain"].astype(str)))
     id_only = set(df["id"].astype(str))
     web_keys = web_metric_keys(web_dir)
     missing: list[str] = []
@@ -777,23 +1123,58 @@ def validate_metric_register(df: pd.DataFrame, web_dir: Path | None = None) -> l
     if missing:
         errors.append("web/data keys with no register id: " + ", ".join(missing[:40]))
 
-    # Archive values must not appear as data keys (style feature names are extended).
     archive_ids = set(df.loc[df["tier"] == "archive", "id"].astype(str))
     shipped_ids = set(df.loc[df["tier"] != "archive", "id"].astype(str))
     archive_only = archive_ids - shipped_ids
     leaked = [k for k in web_keys if json_key_to_id(k) in archive_only]
-    # clustering inputs listed only as style ratios, not raw opta names — raw names leaking is an error
     if leaked:
         errors.append("archive ids exported as web/data keys: " + ", ".join(sorted(leaked)[:40]))
 
-    # first_season must be a real season string when present
+    shipped = df.loc[df["tier"] != "archive"]
+    blank_def = shipped.loc[shipped["definition"].astype(str).str.strip() == ""]
+    if not blank_def.empty:
+        ids = ", ".join(sorted(set(blank_def["id"].astype(str)))[:40])
+        errors.append(f"shipped metrics with empty definition: {ids}")
+    blank_label = shipped.loc[shipped["label"].astype(str).str.strip() == ""]
+    if not blank_label.empty:
+        ids = ", ".join(sorted(set(blank_label["id"].astype(str)))[:20])
+        errors.append(f"shipped metrics with empty label: {ids}")
+    blank_group = shipped.loc[shipped["group"].astype(str).str.strip() == ""]
+    if not blank_group.empty:
+        ids = ", ".join(sorted(set(blank_group["id"].astype(str)))[:20])
+        errors.append(f"shipped metrics with empty group: {ids}")
+
+    caveat_required = set(FPL_COPY) | set(OPTA_COPY) | {
+        "adjusted_per_90",
+        "percentile",
+        "share_of_team",
+        "style_cluster",
+    }
+    for mid in sorted(caveat_required):
+        hit = shipped.loc[shipped["id"].astype(str).isin({mid, opta_id(mid)})]
+        if hit.empty:
+            continue
+        if (hit["caveat"].astype(str).str.strip() == "").all() and mid in FPL_COPY:
+            _, _, caveat, _, _ = FPL_COPY[mid]
+            if caveat:
+                errors.append(f"missing caveat for {mid}")
+
     bad_first = df.loc[df["first_season"].astype(str).str.len() > 0]
     for rec in bad_first.to_dict("records"):
         fs = str(rec["first_season"])
         if len(fs) != 7 or fs[4] != "-":
             errors.append(f"bad first_season for {rec['id']}: {fs!r}")
 
-    _ = ids
+    current = df.loc[df["last_season"].astype(str) == CURRENT_SEASON]
+    if not current.empty:
+        ids = ", ".join(sorted(set(current["id"].astype(str)))[:20])
+        errors.append(f"last_season still set to current season {CURRENT_SEASON}: {ids}")
+
+    opta_shipped = set(df.loc[(df["feed"] == "opta") & (df["tier"] != "archive"), "id"].astype(str))
+    expected = {opta_id(c) for c in list(OPTA_COUNTS) + list(OPTA_RATIOS)}
+    missing_opta = sorted(expected - opta_shipped)
+    if missing_opta:
+        errors.append("shipped Opta ids missing from register: " + ", ".join(missing_opta[:20]))
     return errors
 
 
@@ -804,6 +1185,12 @@ def print_tier_counts(df: pd.DataFrame) -> None:
     print(df.groupby("tier")["id"].nunique().rename("n_ids").to_string(), flush=True)
     print("\nby tier, grain:", flush=True)
     print(df.groupby(["tier", "grain"]).size().rename("n").to_string(), flush=True)
+    unconf = df.attrs.get("unconfident") or []
+    print(f"\nunconfident definition/caveat: {len(unconf)}", flush=True)
+    if unconf:
+        preview = ", ".join(unconf[:30])
+        more = f" (+{len(unconf) - 30} more)" if len(unconf) > 30 else ""
+        print(f"  {preview}{more}", flush=True)
 
 
 def main() -> None:
@@ -817,6 +1204,8 @@ def main() -> None:
             print(f"  {f}", flush=True)
     else:
         print("\nno FPL+Opta dual-canonical at the same grain and context", flush=True)
+    for f in flag_key_collisions(df):
+        print(f"  {f}", flush=True)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ import pandas as pd
 
 from ingest.paths import MARTS, REPO_ROOT
 from transform.explain import attach_explain, load_explain_index
+from transform.metric_copy import OPTA_COUNTS, OPTA_RATIOS, STYLE_COPY
 from transform.web_price import (
     NULL_PRICE_SEASONS,
     PRICE_FROM_SEASON,
@@ -41,6 +42,7 @@ TABLES = (
     "fact_player_style",
     "dim_style_cluster",
     "fact_player_cluster",
+    "fact_player_season_opta",
 )
 
 POSITION_LABEL = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
@@ -260,7 +262,7 @@ def load_rows(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     team_select = ",\n         ".join(
         f"SUM(t.{col}) AS {key}_team" for key, col in TEAM_MAP.items()
     )
-    return con.execute(
+    frame = con.execute(
         f"""
         WITH season_m AS (
             SELECT * EXCLUDE (team_code)
@@ -352,6 +354,42 @@ def load_rows(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
           ON tt.season = m.season AND tt.player_code = m.player_code
         """
     ).df()
+    return _attach_opta_and_style(frame)
+
+
+def _parquet_cols(path: Path, wanted: list[str]) -> list[str]:
+    import pyarrow.parquet as pq
+
+    names = set(pq.read_schema(path).names)
+    return [c for c in wanted if c in names]
+
+
+def _attach_opta_and_style(frame: pd.DataFrame) -> pd.DataFrame:
+    def _keys(df: pd.DataFrame) -> pd.DataFrame:
+        out = df.copy()
+        out["season"] = out["season"].astype(str)
+        out["player_code"] = pd.to_numeric(out["player_code"], errors="coerce").astype("Int64")
+        return out
+
+    frame = _keys(frame)
+    opta_path = MARTS / "fact_player_season_opta.parquet"
+    if opta_path.exists():
+        wanted = ["season", "player_code", *OPTA_COUNTS, *OPTA_RATIOS]
+        cols = _parquet_cols(opta_path, wanted)
+        opta = _keys(pd.read_parquet(opta_path, columns=cols))
+        rename = {c: f"o_{c}" for c in opta.columns if c not in {"season", "player_code"}}
+        opta = opta.rename(columns=rename)
+        frame = frame.merge(opta, on=["season", "player_code"], how="left")
+    style_path = MARTS / "fact_player_style.parquet"
+    if style_path.exists():
+        style_names = [n for n in STYLE_COPY if n not in OPTA_RATIOS]
+        wanted = ["season", "player_code", *style_names]
+        cols = _parquet_cols(style_path, wanted)
+        style = _keys(pd.read_parquet(style_path, columns=cols))
+        rename = {c: f"o_{c}" for c in style.columns if c not in {"season", "player_code"}}
+        style = style.rename(columns=rename)
+        frame = frame.merge(style, on=["season", "player_code"], how="left")
+    return frame
 
 
 def build_season_rows(
@@ -402,6 +440,14 @@ def build_season_rows(
         if season >= PRICE_FROM_SEASON and row["player_code"] is not None:
             priced.update(price_cols.get((season, row["player_code"]), {}))
         row.update(priced)
+        for col in OPTA_COUNTS:
+            row[f"o_{col}_total"] = _as_int(rec.get(f"o_{col}"))
+        for col in OPTA_RATIOS:
+            row[f"o_{col}"] = _as_round4(rec.get(f"o_{col}"))
+        for name in STYLE_COPY:
+            if name in OPTA_RATIOS:
+                continue
+            row[f"o_{name}"] = _as_round4(rec.get(f"o_{name}"))
         by_season.setdefault(season, []).append(row)
 
     for rows in by_season.values():
