@@ -205,3 +205,14 @@ def load_region_lookup() -> pd.DataFrame:
     df["iso_alpha2"] = df["iso_alpha2"].astype("string")
     df["iso_alpha3"] = df["iso_alpha3"].astype("string")
     return df
+
+
+def load_style_features() -> pd.DataFrame:
+    path = DATA / "style_features.csv"
+    df = pd.read_csv(path, dtype={"first_season": "string"})
+    df["name"] = df["name"].astype("string")
+    df["numerator"] = df["numerator"].astype("string")
+    df["denominator"] = df["denominator"].astype("string")
+    df["category"] = df["category"].astype("string")
+    df["in_clustering"] = pd.to_numeric(df["in_clustering"], errors="coerce").astype("Int64")
+    return df

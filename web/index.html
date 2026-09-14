@@ -14,6 +14,8 @@
   --g-gk:#8a5416;  --g-gk-bg:#f8eddc;  --g-gk-br:#dcbe92;
   --g-fpl:#68409c; --g-fpl-bg:#efe8f8; --g-fpl-br:#c0a8dd;
   --g-dis:#9c3f3f; --g-dis-bg:#f7e7e7; --g-dis-br:#dcaeae;
+  --pa:#17679f; --pa-soft:#cfe2f0;
+  --pb:#b35c12; --pb-soft:#f5ddc2;
   --warn:#8a5a12; --warn-soft:#fdf4e3;
   --ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --num:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
@@ -151,7 +153,7 @@ tbody tr:hover .pin,.pin.on{opacity:1}
 .c-fpl[aria-pressed=true]{background:var(--g-fpl-bg);border-color:var(--g-fpl-br);color:var(--g-fpl);font-weight:500}
 .c-dis[aria-pressed=true]{background:var(--g-dis-bg);border-color:var(--g-dis-br);color:var(--g-dis);font-weight:500}
 .chip.toggle[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
-.frames .spacer{flex:1}
+.rankbtn{margin-left:2px}
 
 .tablewrap{flex:1;overflow:auto;position:relative}
 table{border-collapse:separate;border-spacing:0;font-size:12.5px}
@@ -186,6 +188,8 @@ tbody tr:hover td{filter:brightness(.972)}
 tbody tr.sel td{filter:brightness(.94)}
 td.nil{color:var(--ink-3)}
 td.rank .den{color:var(--ink-3);font-size:11px}
+.trk{font-size:9.5px;color:var(--ink-3);margin-left:3px;font-weight:400}
+tbody tr.avg .trk{display:none}
 td.rank.top{font-weight:600}
 td.rank.top.k-att{color:var(--g-att)} td.rank.top.k-def{color:var(--g-def)}
 td.rank.top.k-gk{color:var(--g-gk)} td.rank.top.k-fpl{color:var(--g-fpl)}
@@ -213,15 +217,14 @@ td.club{color:var(--ink-2)}
 #backdrop{position:fixed;inset:0;background:rgba(20,24,30,.18);z-index:40;opacity:0;
   pointer-events:none;transition:opacity .14s}
 #backdrop.on{opacity:1;pointer-events:auto}
-#drawer{position:fixed;top:0;right:0;bottom:0;width:720px;max-width:94vw;background:var(--paper);
+#drawer{position:fixed;top:0;right:0;bottom:0;width:900px;max-width:94vw;background:var(--paper);
   border-left:1px solid var(--rule-2);box-shadow:-6px 0 26px rgba(20,24,30,.10);z-index:41;
   transform:translateX(100%);transition:transform .16s ease;display:flex;flex-direction:column}
 #drawer.on{transform:none}
-.dhead{padding:14px 18px 11px;border-bottom:1px solid var(--rule-2);
-  display:flex;gap:14px;align-items:flex-start}
+.dhead{padding:10px 14px 8px;border-bottom:1px solid var(--rule-2)}
 .dtext{flex:1;min-width:0}
 .dfig{flex:0 0 auto}
-.halo{position:relative;width:66px;height:66px;border-radius:50%;overflow:hidden;
+.halo{position:relative;width:48px;height:48px;border-radius:50%;overflow:hidden;
   background:var(--obs);box-shadow:inset 0 0 0 1px rgba(0,0,0,.10)}
 .halo .flag{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
   opacity:.62;filter:saturate(.82)}
@@ -235,15 +238,15 @@ td.club{color:var(--ink-2)}
     drop-shadow(0 0 var(--ol-w,.9px) var(--ol-1,#fff))
     drop-shadow(0 0 var(--ol-w2,1.7px) var(--ol-2,rgba(14,19,26,.8)))}
 .halo .noav{position:absolute;inset:0}
-.dhead h2{margin:0;font-size:17px;font-weight:600;letter-spacing:-.015em}
+.dhead h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .dalias{font-weight:400;font-size:12px;color:var(--ink-3);margin-left:8px}
-.dhead .meta{margin-top:3px;color:var(--ink-2);font-size:12.5px}
-.dclose{position:absolute;top:12px;right:14px;width:26px;height:26px;border:1px solid var(--rule-2);
+.dhead .meta{margin-top:1px;color:var(--ink-2);font-size:12px;display:flex;align-items:center}
+.dclose{position:absolute;top:8px;right:10px;width:22px;height:22px;border:1px solid var(--rule-2);
   background:var(--paper);border-radius:3px;cursor:pointer;color:var(--ink-2);line-height:1}
 .dclose:hover{border-color:var(--rule-3);color:var(--ink)}
-.dbody{flex:1;overflow:auto;padding:0 18px 22px}
-.dsec{margin-top:16px}
-.dsec h3{margin:0 0 6px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.dbody{flex:1;overflow:auto;padding:0 16px 18px}
+.dsec{margin-top:8px}
+.dsec h3{margin:0;padding:6px 0 4px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px}
 .dsec h3::before{content:"";width:7px;height:7px;border-radius:2px;background:currentColor}
 .dsec.s-base h3::before{display:none}
 .dsec.s-base h3{color:var(--ink-3)}
@@ -251,10 +254,10 @@ td.club{color:var(--ink-2)}
 .dsec.s-gk h3{color:var(--g-gk)}  .dsec.s-fpl h3{color:var(--g-fpl)}
 .dsec.s-dis h3{color:var(--g-dis)}
 .dtable{width:100%;border-collapse:collapse;font-size:12.5px}
-.dtable th{text-align:right;font-weight:500;color:var(--ink-3);font-size:11px;
-  padding:2px 7px 5px;border-bottom:1px solid var(--rule)}
+.dtable th{text-align:right;font-weight:500;color:var(--ink-3);font-size:10.5px;
+  padding:1px 6px 3px;border-bottom:1px solid var(--rule)}
 .dtable th:first-child{text-align:left}
-.dtable td{padding:4px 7px;border-bottom:1px solid var(--rule);text-align:right;
+.dtable td{padding:2px 6px;border-bottom:1px solid var(--rule);text-align:right;
   font-family:var(--num);font-variant-numeric:tabular-nums}
 .dtable td:first-child{text-align:left;font-family:var(--ui);color:var(--ink-2)}
 .dtable tr:last-child td{border-bottom:0}
@@ -263,7 +266,40 @@ td.club{color:var(--ink-2)}
 .dtable.log td{padding:3px 5px}
 .dtable.log th{padding:2px 5px 5px}
 .dtable.log th:first-child,.dtable.log td:first-child{padding-left:2px}
-.ldrop{color:var(--ink-3);font-size:10.5px;margin:4px 0 2px;font-style:italic}
+.lrow{cursor:pointer}
+.lrow:hover td{background:var(--obs)}
+.lrow.open td{background:#eef2f6;font-weight:500}
+.lcar{width:12px;color:var(--ink-3);font-size:8px;padding-right:0!important}
+.ldet td{background:var(--obs);padding:8px 8px 10px!important}
+.mdhead{margin-bottom:7px;display:flex;align-items:baseline;gap:8px}
+.mdwhat{font-size:11px;font-weight:600;color:var(--ink-2)}
+.mdsrc{font-size:9px;color:var(--ink-3);border:1px solid var(--rule-2);
+  border-radius:3px;padding:0 4px;cursor:help;letter-spacing:.03em}
+.mdsrc.der{font-style:italic}
+.mdgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px 10px}
+.mdc{display:flex;align-items:baseline;gap:6px;font-size:11.5px;
+  border-bottom:1px solid var(--rule);padding:2px 0}
+.mdk{flex:1;color:var(--ink-3);font-family:var(--ui);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.mdv{font-family:var(--num);font-variant-numeric:tabular-nums;font-weight:500}
+.mdv.nil{color:var(--rule-2);font-weight:400}
+.mdt{color:var(--ink-3);font-weight:400;font-size:10px}
+.mdc.total{grid-column:1/-1;border-top:1px solid var(--rule-3);border-bottom:0;
+  margin-top:3px;padding-top:4px;font-weight:600}
+.mdgrid.one{grid-template-columns:1fr}
+.mdsub{grid-column:1/-1;font-size:9.5px;font-weight:600;color:var(--ink-3);
+  letter-spacing:.03em;margin:5px 0 1px}
+.mdsub:first-child{margin-top:0}
+.mdv.neg{color:#9c3f3f}
+.mdc.odd .mdk{color:#9c3f3f}
+.mdempty{grid-column:1/-1;color:var(--ink-3);font-size:11px;font-style:italic}
+.mdc.dcbox{grid-column:1/-1;border-bottom:1px solid var(--rule-3);padding-bottom:3px}
+.mdc.dcbox.hit .mdv{color:#0e5d4a}
+.mdc.dcbox.over .mdv{color:#0b4a3b;font-weight:700}
+.mdc.dcbox.near .mdv{color:#8a5a12}
+.mdnote{grid-column:1/-1;font-size:10.5px;color:var(--ink-3);font-style:italic;
+  margin-top:5px;line-height:1.4}
+.mdnote code{font-family:var(--num);font-style:normal}
 .dtable.log tr.blank td{color:var(--ink-3)}
 .dtable.log tr.nofix-row td{color:var(--ink-3);background:repeating-linear-gradient(
   45deg,transparent,transparent 5px,rgba(150,160,175,.07) 5px,rgba(150,160,175,.07) 10px)}
@@ -272,25 +308,25 @@ td.club{color:var(--ink-2)}
 .dtable.log .sc{color:var(--ink-3);font-size:11px}
 .lsec{border-bottom:1px solid var(--rule)}
 .lsec[open]{padding-bottom:8px}
-.lseason{margin:0;padding:7px 2px;font-size:11px;color:var(--ink-3);font-weight:600;
+.lseason{margin:0;padding:5px 2px;font-size:11px;color:var(--ink-3);font-weight:600;
   display:flex;align-items:center;gap:9px;cursor:pointer;list-style:none;user-select:none}
 .lseason::-webkit-details-marker{display:none}
 .lseason:hover{color:var(--ink-2)}
 .lcar{display:inline-block;transition:transform .12s;font-size:9px;color:var(--ink-3)}
 .lsec[open] .lcar{transform:rotate(90deg)}
-.lsum{margin-left:auto;font-weight:400;font-family:var(--num);font-size:11px;color:var(--ink-3)}
+.lsum{margin-left:auto;font-weight:400;font-family:var(--num);font-size:10.5px;color:var(--ink-3)}
 .dc-hit-i{color:#12705a;font-weight:600}
 .lclub{font-weight:500;color:var(--ink-2);font-size:12px;display:flex;align-items:center}
 .dtable.log td.dc-hit{background:#dff0e8;color:#0e5d4a;font-weight:600}
 .dtable.log td.dc-over{background:#bfe3d3;color:#0b4a3b;font-weight:700}
 .dtable.log td.dc-near{background:#fbf0d9;color:#8a5a12}
 .lmsg{color:var(--ink-3);font-size:12px;padding:4px 0 2px}
-.dpairs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 14px}
-.dpair{border-bottom:1px solid var(--rule);padding-bottom:5px}
-.dpair .k{font-size:11px;color:var(--ink-3)}
-.dpair .v{font-family:var(--num);font-variant-numeric:tabular-nums;font-size:14px}
+.dpairs{display:grid;grid-template-columns:repeat(6,1fr);gap:4px 8px}
+.dpair{border-bottom:1px solid var(--rule);padding-bottom:3px}
+.dpair .k{font-size:10px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dpair .v{font-family:var(--num);font-variant-numeric:tabular-nums;font-size:13px}
 
-.radar{width:100%;max-width:340px;display:block;margin:2px auto 0}
+.radar{width:100%;max-width:310px;display:block;margin:0 auto}
 .radar .ring{fill:none;stroke:var(--rule);stroke-width:1}
 .radar .ring.outer{stroke:var(--rule-2)}
 .radar .spoke{stroke:var(--rule);stroke-width:1}
@@ -301,7 +337,101 @@ td.club{color:var(--ink-2)}
 .radar .rval{font-family:var(--num);font-size:10.5px;fill:var(--ink-2);font-weight:600}
 .radar .rraw{font-weight:400;fill:var(--ink-3);font-size:9px}
 .rnote b{font-weight:600;color:var(--ink-2)}
-.dsum{font-size:11.5px;font-weight:600;cursor:pointer;list-style:none;user-select:none;
+#drawer.wide{width:1080px}
+.slotbtn.rm:hover{background:#fdf1f1}
+.slotbtn.rm:hover .halo{box-shadow:inset 0 0 0 1.5px #d89a9a}
+.vs{flex:none;align-self:center;font-size:17px;font-weight:600;letter-spacing:.06em;
+  color:var(--rule-2);padding:0 4px;font-family:var(--ui)}
+.pane.cmping{opacity:.72}
+.pane.cmping:hover{opacity:.92}
+.dpanes{display:flex;gap:0;align-items:stretch}
+.dpanes .pane{flex:1;min-width:0;display:flex;gap:10px;align-items:center}
+.dpanes .pane.b{padding-left:12px;position:relative}
+.slotbtn{display:flex;gap:10px;align-items:center;background:none;border:0;padding:0;
+  cursor:pointer;text-align:left;width:100%;min-width:0;font:inherit;color:inherit;
+  border-radius:6px}
+.slotbtn:hover{background:var(--obs)}
+.halo.gh{background:var(--obs);box-shadow:none;border:1.5px dashed var(--rule-2);
+  display:flex;align-items:center;justify-content:center}
+.halo.gh .plus{font-size:20px;color:var(--ink-3);line-height:1;font-weight:300;
+  margin-top:-2px}
+.slotbtn.ghost:hover .halo.gh{border-color:var(--pb);background:#fdf6ef}
+.slotbtn.ghost:hover .plus{color:var(--pb)}
+.gname{display:block;font-size:14px;font-weight:500;color:var(--ink-3)}
+.slotbtn.ghost:hover .gname{color:var(--ink-2)}
+.gmeta{display:block;font-size:12px;color:var(--rule-2);font-family:var(--num);
+  letter-spacing:.06em;margin-top:2px}
+.cmpms .ms-panel{top:calc(100% + 6px);left:auto;right:0;width:300px;z-index:60}
+.dcols{display:flex;gap:0;align-items:flex-start}
+.dcol{min-width:0}
+.dcol.left{flex:0 0 368px;border-right:1px solid var(--rule);padding-right:16px}
+.dcol.right{flex:1;padding-left:16px}
+#drawer.wide .dcol.left{flex:0 0 368px}
+.dcol.left .radarsec .radar{max-width:300px}
+.dcol.left .lsec{overflow-x:auto}
+.dcol.left .dtable.log{font-size:11.5px;width:100%}
+.dcol.left .dtable.log td:nth-child(2){max-width:112px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
+.dcol.left .dtable.log td{padding:2px 4px}
+.dcol.left .dtable.log th{padding:1px 4px 3px;font-size:10px}
+.dcol.left .lsum{font-size:10px}
+
+.arows{display:grid;grid-template-columns:1fr;gap:0}
+.arow{display:flex;align-items:center;height:23px;font-family:var(--num);
+  font-variant-numeric:tabular-nums;font-size:12px}
+.arow .ak{flex:1;text-align:center;font-family:var(--ui);font-size:11px;color:var(--ink-3)}
+.arow .av{width:62px;flex:none}
+.arow .av.a{text-align:right;color:var(--pa)}
+.arow .av.b{color:var(--pb)}
+
+.srows{font-family:var(--num);font-variant-numeric:tabular-nums;font-size:12px;
+  padding-bottom:2px}
+.srow,.srow2{display:flex;align-items:center;height:25px;gap:7px}
+.slab{width:96px;flex:none;font-family:var(--ui);font-size:11.5px;color:var(--ink-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sval{width:74px;flex:none;text-align:right}
+.srk{font-size:9.5px;color:var(--ink-3);margin-left:3px;font-weight:400}
+.sval.r{text-align:right}
+.srow2 .sval:last-child{text-align:left}
+.srow2 .sval:last-child .srk{margin:0 0 0 3px}
+.sval.dim{color:var(--ink-3)}
+.sval.lead{font-weight:600;color:var(--ink)}
+.strack{flex:1;height:11px;background:#eceff3;border-radius:2px;overflow:hidden}
+.sfill{display:block;height:11px;background:var(--pa);border-radius:2px}
+.split{flex:1;min-width:60px;height:13px;border-radius:3px;overflow:hidden;display:flex;
+  background:#eceff3}
+.split .pa{background:var(--pa)}
+.split .pb{flex:1;background:var(--pb);border-left:1px solid var(--paper)}
+.chip{min-width:30px;flex:none;text-align:center;border-radius:4px;font-size:11px;
+  line-height:17px;padding:0 4px;color:var(--ink-2);background:#eceff3;
+  font-variant-numeric:tabular-nums}
+.chip.b4{background:#cfe8dc;color:#0e5d4a}
+.chip.b3{background:#e3f0e6;color:#2f6b48}
+.chip.b2{background:#f7efd9;color:#8a6410}
+.chip.b1{background:#f8e4d5;color:#9a5418}
+.chip.b0{background:#f7dcdc;color:#98302f}
+.chip.na{color:var(--ink-3)}
+.radarsec .radar{max-width:260px}
+
+.dpanes .pane.a h2::before,.dpanes .pane.b h2::before{content:"";display:inline-block;
+  width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.dpanes .pane.a h2::before{background:var(--pa)}
+.dpanes .pane.b h2::before{background:var(--pb)}
+.cmpms{display:inline-block}
+.cmpms .ms-btn{min-width:170px;height:24px;font-size:12px}
+.cmpms .ms-panel{width:300px}
+.pbtn{width:100%;border:0;background:none;text-align:left;font:inherit}
+.pbtn .pmeta{font-family:var(--num);font-size:10.5px;color:var(--ink-3);margin-left:auto;
+  padding-left:8px;white-space:nowrap}
+.ms-opt .lbl{flex:0 1 auto}
+.dhead{position:relative}
+.dpanes{display:flex;gap:0}
+.pane{display:flex;gap:10px;align-items:center}
+.pane h2{font-size:16px}
+.dpanes .pane h2{font-size:15px}
+.cmpchip.clear{color:var(--ink-3)}
+.dsum{font-size:11px;font-weight:600;cursor:pointer;list-style:none;user-select:none;
   padding:7px 2px;display:flex;align-items:center;gap:6px}
 .dsum::-webkit-details-marker{display:none}
 .dsum::before{content:"\25B8";font-size:9px;color:var(--ink-3);transition:transform .12s;
@@ -312,7 +442,7 @@ details.dsec[open]{padding-bottom:9px}
 .dsec.s-att .dsum{color:var(--g-att)} .dsec.s-def .dsum{color:var(--g-def)}
 .dsec.s-gk .dsum{color:var(--g-gk)}   .dsec.s-fpl .dsum{color:var(--g-fpl)}
 .dsec.s-dis .dsum{color:var(--g-dis)}
-.rtoggle{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:14px}
+.rtoggle{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:8px}
 .rseg button{padding:3px 11px}
 .rhelp{width:15px;height:15px;border-radius:50%;border:1px solid var(--rule-2);
   background:var(--paper);color:var(--ink-3);font-size:10px;line-height:1;cursor:help;
@@ -320,19 +450,16 @@ details.dsec[open]{padding-bottom:9px}
 .rhelp:hover{border-color:var(--ink-3);color:var(--ink)}
 .dsec h3{align-items:center}
 /* compare */
-.dcmp{margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .clbl{font-size:11px;color:var(--ink-3)}
 .clbl.dim{font-style:italic}
 .cmpchip{font-size:11.5px;padding:1px 8px}
 .cmpchip[aria-pressed=true]{background:#41474f;border-color:#41474f;color:#fff;font-weight:500}
-.radar .area.cmp{fill:#41474f;fill-opacity:.07;stroke:#41474f;stroke-width:1.5;
-  stroke-dasharray:4 3}
-.rleg{display:flex;gap:16px;justify-content:center;font-size:11.5px;color:var(--ink-2);
-  margin:2px 0 -4px}
+.radar .area.cmp{fill:var(--pb);fill-opacity:.13;stroke:var(--pb);stroke-width:1.6}
+.rleg{display:flex;gap:16px;justify-content:center;font-size:11px;color:var(--ink-2);margin:0}
 .rleg .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;
   background:var(--rc);vertical-align:-1px}
-.rleg .sw.cmp{background:transparent;border:1.5px dashed #41474f}
-.dtable.cmp{margin-top:10px}
+.rleg .sw.cmp{background:var(--pb)}
+.dtable.cmp{margin-top:6px}
 .dtable.cmp th{font-size:10.5px}
 .dtable.cmp td{padding:3px 6px}
 .rraw2{display:block;font-size:9.5px;color:var(--ink-3);font-weight:400}
@@ -340,6 +467,8 @@ details.dsec[open]{padding-bottom:9px}
 .dtable.cmp td.down{color:#9c3f3f;font-weight:600}
 .dtable.cmp td.nil{color:var(--ink-3)}
 .rnote{color:var(--ink-3);font-size:11px;line-height:1.45;margin-top:4px}
+.mdnote{grid-column:1/-1;font-size:9.5px;color:var(--rule-2);font-style:italic;
+  margin-top:3px;cursor:help}
 
 #tip{position:fixed;z-index:60;max-width:312px;background:#1b1f26;color:#eef1f5;padding:8px 10px;
   border-radius:4px;font-size:12px;line-height:1.5;pointer-events:none;opacity:0;
@@ -384,10 +513,9 @@ details.dsec[open]{padding-bottom:9px}
   <div class="frames">
     <span class="lbl">Frame</span>
     <span class="seg" id="frameSeg"></span>
-    <span class="lbl" style="margin-left:6px">Metrics</span>
+    <button class="chip toggle rankbtn" id="rankChip">Rank</button>
+    <span class="lbl" style="margin-left:10px">Metrics</span>
     <span class="chips" id="metricChips"></span>
-    <span class="spacer"></span>
-    <button class="chip toggle" id="rankChip">Rank</button>
   </div>
 </div>
 
@@ -405,11 +533,7 @@ details.dsec[open]{padding-bottom:9px}
 
 <div id="backdrop"></div>
 <aside id="drawer" aria-hidden="true">
-  <div class="dhead">
-    <div class="dfig" id="dFig"></div>
-    <div class="dtext"><h2 id="dName"></h2><div class="meta" id="dMeta"></div>
-      <div class="dcmp" id="dCmp"></div></div>
-    <button class="dclose" id="dClose" title="Close (Esc)">&times;</button></div>
+  <div class="dhead" id="dHead"></div>
   <div class="dbody" id="dBody"></div>
 </aside>
 <div id="tip"></div>
@@ -483,8 +607,8 @@ const TC={Attacking:'t-att',Defensive:'t-def',Goalkeeping:'t-gk',Discipline:'t-d
   Fantasy:'t-fpl',All:'t-all'};
 /* The Fantasy tab is a view, not a group: everything that moves the points
    total, wherever it lives, followed by FPL's own indices. */
-const FANTASY_SET=['points','netpoints','bonus','bps','goals','assists','cs','saves',
-  'pensaved','penmissed','yellow','red','og','influence','creativity','threat','ict'];
+const FANTASY_SET=['points','netpoints','bonus','bps','goals','assists','cs','defcon',
+  'saves','pensaved','penmissed','yellow','red','og','influence','creativity','threat','ict'];
 const SRC={match:'Match data, from the Premier League\u2019s official feed.',
   fpl:'Fantasy Premier League scoring layer — a game convention, not a football measurement.'};
 
@@ -542,7 +666,7 @@ const clubBar=(name,lg)=>{
 };
 
 const state={seasons:[],pos:[],club:[],nat:[],minMinutes:600,mpaMin:0,
-  q:'',ageMin:null,ageMax:null,pins:[],cmp:null,radars:[],radarMode:'perf',
+  q:'',ageMin:null,ageMax:null,pins:[],cmp:null,cmpFrame:'adj90',logOpen:null,logSeasons:[],radars:[],radarMode:'perf',
   tab:'Attacking',frames:['total','adj90'],off:[],rank:false,
   sort:'minutes',page:0,sel:null};
 
@@ -564,6 +688,7 @@ function readHash(){
   if(p.get('cmp'))state.cmp=+p.get('cmp');
   state.radars=L('rad');
   if(p.get('rmode'))state.radarMode=p.get('rmode');
+  if(p.get('cfr'))state.cmpFrame=p.get('cfr');
   if(p.get('tab'))state.tab=p.get('tab');
   if(p.has('fr'))state.frames=L('fr');
   state.off=L('off');
@@ -586,6 +711,7 @@ function writeHash(){
   if(state.cmp)p.set('cmp',state.cmp);
   if(state.radars.length)p.set('rad',state.radars.join(','));
   if(state.radarMode!=='perf')p.set('rmode',state.radarMode);
+  if(state.cmpFrame!=='adj90')p.set('cfr',state.cmpFrame);
   p.set('tab',state.tab);p.set('fr',state.frames.join(','));
   if(state.off.length)p.set('off',state.off.join(','));
   if(state.rank)p.set('rank','1');
@@ -753,6 +879,8 @@ function tabMetrics(){
 const activeStats=()=>tabMetrics().filter(m=>!state.off.includes(m.key)).map(m=>m.key);
 const activeFrames=()=>FRAME_DEFS.filter(f=>state.frames.includes(f.id));
 
+const rankHost=()=>state.frames.includes('adj90')?'adj90'
+  :(FRAME_DEFS.find(f=>state.frames.includes(f.id))||{}).id;
 function columns(){
   const stats=activeStats(),frames=activeFrames();
   const cols=[
@@ -779,13 +907,11 @@ function columns(){
       if(f.id==='share'&&!m.share)continue;
       cols.push({id:k+'_'+f.id,label:frames.length>1?`${m.label} ${f.label}`:m.label,
         block:f.block,metric:k,frame:f.id,fplcol:isFpl,
-        fmt:f.id==='share'?'pct':m.fmt,
+        fmt:f.id==='share'?'pct':f.id==='total'?'count':m.fmt,
         gap:first&&!isFpl?false:false,gapsrc:isFpl&&firstFpl&&first});
       if(isFpl&&firstFpl&&first)firstFpl=false;
       first=false;
     }
-    if(state.rank)cols.push({id:k+'_rank',label:frames.length>1?`${m.label} rank`:`${m.label} rk`,
-      block:'der',metric:k,frame:'rank',type:'rank',fplcol:isFpl});
   }
   return cols;
 }
@@ -801,7 +927,7 @@ function apply(rows){
     (!state.club.length||state.club.includes(r.team_name))&&
     (!state.nat.length||state.nat.includes(r.nationality)));
   if(state.rank)for(const k of activeStats()){
-    const m=M(k),f=k+'_adj90';
+    const m=M(k),f=k+'_'+rankHost();
     const p=out.filter(r=>r[f]!=null).sort((a,b)=>(b[f]-a[f])*m.dir);
     p.forEach((r,i)=>{r[k+'_rank']=i+1;r[k+'_rankN']=p.length;});
     for(const r of out)if(r[f]==null){r[k+'_rank']=null;r[k+'_rankN']=null;}
@@ -842,6 +968,7 @@ function averages(rows,cols){
 
 const fmt=(v,f)=>{
   if(v==null||Number.isNaN(v))return null;
+  if(f==='count')return Number.isInteger(v)?v.toLocaleString():v.toFixed(2);
   if(f==='int')return Math.round(v).toLocaleString();
   if(f==='1dp')return v.toFixed(1);
   if(f==='pct')return (v*100).toFixed(1)+'%';
@@ -902,7 +1029,13 @@ function render(){
       if(v==null)return `<td class="${cls} nil">—</td>`;
       return `<td class="${cls} rank${v<=10?' top '+KC[m.group]:''}">${v}<span class="den"> / ${n}</span></td>`;}
     const s=suppressed(c,r)?null:fmt(r[c.id],c.fmt);
-    return s==null?`<td class="${cls} nil">—</td>`:`<td class="${cls}">${s}</td>`;
+    if(s==null)return `<td class="${cls} nil">—</td>`;
+    let rk='';
+    if(state.rank&&c.metric&&c.frame===rankHost()){
+      const v=r[c.metric+'_rank'],n=r[c.metric+'_rankN'];
+      if(v!=null)rk=`<span class="trk" title="rank ${v} of ${n} in the current filter">(${v})</span>`;
+    }
+    return `<td class="${cls}">${s}${rk}</td>`;
   };
   if(!rows.length){
     tbody.innerHTML='';empty.hidden=false;
@@ -964,43 +1097,86 @@ function openDrawer(code){
   const r=rows.find(x=>x.player_code===code)||aggregate().find(x=>x.player_code===code);
   if(!r)return;
   state.sel=code;
-  const iso=flagFor(r.nationality);
-  const av=avatarFor(r.team_name);
-  document.getElementById('dFig').innerHTML=
-    `<div class="halo"${r.nationality?` title="${r.nationality}"`:''}>`+
-    (iso?`<img class="flag" src="flags/${iso}.svg" alt="" `+
-         `onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://flagcdn.com/w160/${iso}.png'}else{this.style.display='none'}">`
-        :'')+
-    (av?`<img class="avatar" src="${av}" alt="">`:'<span class="noav"></span>')+
-    `</div>`;
-  const fn=fullName(r);
-  document.getElementById('dName').innerHTML=fn+
-    (fn!==r.web_name?`<span class="dalias">${r.web_name}</span>`:'');
-  const bits=[r.position,r.age!=null?r.age+' years':null,
-    r.moved?'changed club in range':null].filter(Boolean);
-  document.getElementById('dMeta').innerHTML=
-    clubBar(r.team_name,true)+r.team_name+' · '+bits.join(' · ');
+  const cmpR=state.cmp&&state.cmp!==code
+    ?aggregate().find(x=>x.player_code===state.cmp):null;
+  const two=!!cmpR;
+  document.getElementById('drawer').classList.toggle('wide',two);
 
-  const pair=(k,v)=>`<div class="dpair"><div class="k">${k}</div><div class="v">${v??'—'}</div></div>`;
-  let html=`<div class="dsec s-base"><h3>Availability</h3><div class="dpairs">`+
-    pair('Minutes',fmt(r.minutes,'int'))+pair('Appearances',fmt(r.appearances,'int'))+
-    pair('Starts',fmt(r.starts,'int'))+pair('60+ mins',fmt(r.apps_60,'int'))+
-    pair('Min / app',fmt(r.min_per_app,'int'))+pair('Min share',fmt(r.minutes_share,'pct'))+
-    `</div></div>`;
+  const figure=p=>{
+    const iso=flagFor(p.nationality),av=avatarFor(p.team_name);
+    return `<div class="halo"${p.nationality?` title="${p.nationality}"`:''}>`+
+      (iso?`<img class="flag" src="flags/${iso}.svg" alt="" `+
+        `onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://flagcdn.com/w160/${iso}.png'}else{this.style.display='none'}">`:'')+
+      (av?`<img class="avatar" src="${av}" alt="">`:'<span class="noav"></span>')+`</div>`;
+  };
+  const ident=p=>{
+    const fn=fullName(p);
+    const bits=[p.position,p.age!=null?p.age+' years':null,
+      p.moved?'changed club in range':null].filter(Boolean);
+    return `<div class="dfig">${figure(p)}</div><div class="dtext">`+
+      `<h2>${fn}${fn!==p.web_name?`<span class="dalias">${p.web_name}</span>`:''}</h2>`+
+      `<div class="meta">${clubBar(p.team_name,true)}${p.team_name} · ${bits.join(' · ')}</div></div>`;
+  };
 
-  const cmpBox=document.getElementById('dCmp');
-  const cands=state.pins.filter(c=>c!==code)
-    .map(c=>aggregate().find(x=>x.player_code===c)).filter(Boolean);
-  cmpBox.innerHTML=cands.length
-    ?`<span class="clbl">Compare with</span>`+cands.map(p=>
-        `<button class="chip cmpchip" data-cmp="${p.player_code}" `+
-        `aria-pressed="${state.cmp===p.player_code}">${p.web_name}</button>`).join('')
-    :`<span class="clbl dim">Pin a player in the table (★) to overlay them here</span>`;
-  cmpBox.querySelectorAll('[data-cmp]').forEach(b=>{
+  const slot=two
+    ? `<button class="slotbtn rm" id="cmpBtn" data-cmp="0" `+
+      `title="Click to remove from the comparison">${ident(cmpR)}</button>`
+    : `<button class="slotbtn ghost" id="cmpBtn" title="Add a player to compare">`+
+      `<span class="dfig"><span class="halo gh"><span class="plus">+</span></span></span>`+
+      `<span class="dtext"><span class="gname">Add player</span>`+
+      `<span class="gmeta">— · — · —</span></span></button>`;
+
+  document.getElementById('dHead').innerHTML=
+    `<div class="dpanes"><div class="pane a">${ident(r)}</div>`+
+    `${two?'<span class="vs">VS</span>':''}`+
+    `<div class="pane b ms cmpms${two?' cmping':''}" id="cmpMs">${slot}`+
+    `<div class="ms-panel"><input class="ms-search" id="cmpSearch" `+
+    `placeholder="Search any player…"><div class="ms-list" id="cmpList"></div></div></div></div>`+
+    `<button class="dclose" id="dClose" title="Close (Esc)">&times;</button>`;
+
+  document.getElementById('dClose').onclick=closeDrawer;
+  document.querySelectorAll('[data-cmp]').forEach(b=>{
     b.onclick=()=>{
       const c=+b.dataset.cmp;
-      state.cmp=state.cmp===c?null:c;
+      state.cmp=(c===0||state.cmp===c)?null:c;
       openDrawer(code);};});
+  {
+    const host=document.getElementById('cmpMs');
+    const btn=document.getElementById('cmpBtn'),panel=host.querySelector('.ms-panel');
+    const search=document.getElementById('cmpSearch'),list=document.getElementById('cmpList');
+    const all=aggregate().filter(x=>x.player_code!==code&&x.minutes>0)
+      .sort((x,y)=>y.minutes-x.minutes);
+    const paint=q=>{
+      const nq=norm(q);
+      const hits=(nq?all.filter(x=>norm(x.web_name).includes(nq)||norm(fullName(x)).includes(nq))
+        :all).slice(0,60);
+      list.innerHTML=hits.length?hits.map(x=>
+        `<button class="ms-opt pbtn" data-pick="${x.player_code}">${clubBar(x.team_name)}`+
+        `<span class="lbl">${x.web_name}</span>`+
+        `<span class="pmeta">${x.position} · ${fmt(x.minutes,'int')}'</span></button>`).join('')
+        :'<div class="ms-none">No player matches.</div>';
+      list.querySelectorAll('[data-pick]').forEach(b=>{
+        b.onclick=e=>{e.stopPropagation();state.cmp=+b.dataset.pick;openDrawer(code);};});
+    };
+    if(!two)btn.onclick=e=>{
+      e.stopPropagation();
+      const open=panel.classList.contains('on');
+      document.querySelectorAll('.ms-panel.on').forEach(x=>x.classList.remove('on'));
+      if(!open){panel.classList.add('on');search.value='';paint('');search.focus();}};
+    panel.onclick=e=>e.stopPropagation();
+    search.oninput=()=>paint(search.value);
+  }
+
+  const AVAIL=[['Minutes','minutes','int'],['Appearances','appearances','int'],
+    ['Starts','starts','int'],['60+ mins','apps_60','int'],
+    ['Min / app','min_per_app','int'],['Min share','minutes_share','pct']];
+  let html='';
+  const av=(lbl,k,f)=>two
+    ?`<div class="arow"><span class="av a">${fmt(r[k],f)??'—'}</span>`+
+     `<span class="ak">${lbl}</span><span class="av b">${fmt(cmpR[k],f)??'—'}</span></div>`
+    :`<div class="dpair"><div class="k">${lbl}</div><div class="v">${fmt(r[k],f)??'—'}</div></div>`;
+  html+=`<div class="dsec s-base"><div class="${two?'arows':'dpairs'}">`+
+    AVAIL.map(x=>av(x[0],x[1],x[2])).join('')+`</div></div>`;
 
   const perfOK=['Attacking','Defensive']
     .filter(g=>groupMetrics(g).some(m=>m.pos.includes(r.position)));
@@ -1018,27 +1194,38 @@ function openDrawer(code){
     `<button class="chip ${CC[g]}" data-radar="${g}" `+
     `aria-pressed="${state.radars.includes(g)}">${g}</button>`).join('');
   ctl+=`</div>`;
-  html+=ctl;
   const groups=mode==='fantasy'?['Fantasy']:perfOK.filter(g=>state.radars.includes(g));
-  if(groups.length)html+=radarSVG(r,groups);
-  else html+=`<div class="dsec s-base"><div class="lmsg">No radar selected.</div></div>`;
+  const radarHtml=groups.length?radarSVG(r,groups)
+    :`<div class="dsec s-base"><div class="lmsg">No radar selected.</div></div>`;
+  const leftCol=`<details class="dsec s-base radarsec" open><summary class="dsum">Radar</summary>`+
+    ctl+radarHtml+`</details>`+
+    `<div class="dsec s-base" id="dLog"><h3>Match log</h3><div class="lmsg">Loading…</div></div>`;
+
+  html+=`<div class="rtoggle"><span class="clbl">Values</span><span class="seg rseg">`+
+    FRAME_DEFS.map(f=>`<button data-cframe="${f.id}" `+
+      `aria-pressed="${state.cmpFrame===f.id}">${f.label}</button>`).join('')+`</span>`+
+    `<button class="rhelp" data-help="${encodeURIComponent(
+      `<b>Bars and chips are percentiles</b> against ${pctPool(r.position).length} `+
+      `${r.position}s clearing the minutes floor, on the adjusted rate. 100 is best, `+
+      `0 worst. Metrics marked \u2193 are better when lower, so 100 there means fewest.`+
+      (two?`<br><br>In comparison the split bar shows each player's share of the pair, `+
+        `while the chip colour still shows quality against the league — so a longer bar `+
+        `with a red chip means more of something that is not good.`:'')+
+      `<br><br>The number in brackets after each value is the player's rank on the `+
+      `displayed frame, within the current filter.`
+    )}" aria-label="How to read these">?</button></div>`;
 
   for(const g of GROUPS){
-    const ms=drawerMetrics(METRICS.filter(m=>m.group===g&&m.pos.includes(r.position)));
+    const ms=groupMetrics(g).filter(m=>m.pos.includes(r.position))
+      .filter(m=>state.cmpFrame!=='share'||m.share);
     if(!ms.length)continue;
-    html+=`<details class="dsec ${SC[g]}"><summary class="dsum">${g}</summary>`+
-      `<table class="dtable"><thead><tr>
-      <th>Metric</th><th>Total</th><th>/90</th><th>/app</th><th>Adj</th><th>Share</th></tr></thead><tbody>`;
-    for(const m of ms){
-      const cell=(id,f)=>{const v=fmt(r[m.key+'_'+id],f||m.fmt);
-        return v==null?'<td class="nil">—</td>':`<td>${v}</td>`;};
-      html+=`<tr><td>${m.label}</td>${cell('total')}${cell('p90')}${cell('app')}${cell('adj90')}`+
-        (m.share?cell('share','pct'):'<td class="nil">—</td>')+`</tr>`;
-    }
-    html+='</tbody></table></details>';
+    html+=`<details class="dsec ${SC[g]}" open><summary class="dsum">${g}</summary>`+
+      statRows(ms,r,cmpR,state.cmpFrame)+`</details>`;
   }
-  html+='<div class="dsec s-base" id="dLog"><h3>Match log</h3><div class="lmsg">Loading…</div></div>';
-  document.getElementById('dBody').innerHTML=html;
+
+  document.getElementById('dBody').innerHTML=
+    `<div class="dcols"><div class="dcol left">${leftCol}</div>`+
+    `<div class="dcol right">${html}</div></div>`;
   document.getElementById('drawer').classList.add('on');
   document.getElementById('drawer').setAttribute('aria-hidden','false');
   document.getElementById('backdrop').classList.add('on');
@@ -1052,6 +1239,8 @@ function openDrawer(code){
       openDrawer(code);};});
   document.querySelectorAll('[data-mode]').forEach(b=>{
     b.onclick=()=>{state.radarMode=b.dataset.mode;openDrawer(code);};});
+  document.querySelectorAll('[data-cframe]').forEach(b=>{
+    b.onclick=()=>{state.cmpFrame=b.dataset.cframe;openDrawer(code);};});
   document.querySelectorAll('[data-help]').forEach(b=>{
     const body=decodeURIComponent(b.dataset.help);
     attachTip(b,{title:'How to read this',body,src:null});});
@@ -1069,11 +1258,9 @@ async function renderLog(r,code){
       '— add matchlogs_{season}.json to web/data/.</div>';
     return;
   }
-  const ms=drawerMetrics(tabMetrics().filter(m=>m.pos.includes(r.position)));
-  /* DC belongs with defensive metrics and with anything points-related */
-  const T=['Defensive','Fantasy','All'].includes(state.tab)?DC_THRESH[r.position]:null;
-  /* Points are an FPL scoring outcome, so they only belong on that view */
-  const showPts=state.tab==='Fantasy'||state.tab==='All';
+  /* Every outfield match has a defensive-contribution count, and how close a
+     player came to the threshold is worth seeing regardless of view. */
+  const T=DC_THRESH[r.position]||null;
   let html='<h3>Match log</h3>',shown=0;
   for(let i=seasons.length-1;i>=0;i--){
     const season=seasons[i];
@@ -1087,65 +1274,77 @@ async function renderLog(r,code){
     const club=srow.team_name
       ?`<span class="lclub">${clubBar(srow.team_name)}${srow.team_name}${srow.moved?' <span class="moved">moved mid-season</span>':''}</span>`:'';
 
-    let hits=0,near=0,rowsHtml='',cols=[],dropped=0;
+    const fanMode=state.radarMode==='fantasy';
+    /* Performance highlights are football; fantasy highlights are points. */
+    const hi=fanMode?[{k:'points',h:'Pts'}]
+      :r.position==='GK'?[{k:'saves',h:'Sv'},{k:'gc',h:'GC'},{k:'cs',h:'CS'}]
+      :[{k:'goals',h:'G'},{k:'assists',h:'A'},{k:'xgi',h:'xGI'}];
+
+    let hits=0,near=0,rowsHtml='';
     if(log&&log.length){
-      /* A column that is empty all season is noise in a match log. Keep only
-         metrics this player actually registered, per season. */
-      cols=ms.filter(m=>log.some(g=>g[m.key]!=null&&g[m.key]!==0));
-      dropped=ms.length-cols.length;
       for(const g of [...log].sort((a,b)=>a.gw-b.gw||(a.fixture||0)-(b.fixture||0))){
-        const opp=g.blank?'<span class="nofix">no fixture — blank GW</span>'
+        const opp=g.blank?'<span class="nofix">blank GW</span>'
           :g.opp?`${g.opp} <span class="ha">${g.home?'H':'A'}</span>`
-          :'<span class="nil">opponent unknown</span>';
-        const res=(g.team_score!=null&&g.opp_score!=null)?` <span class="sc">${g.team_score}–${g.opp_score}</span>`:'';
-        const cls=g.blank?' class="nofix-row"':(g.minutes===0?' class="blank"':'');
-        let dc='<td class="nil">—</td>';
+          :'<span class="nil">—</span>';
+        const res=(g.team_score!=null&&g.opp_score!=null)
+          ?` <span class="sc">${g.team_score}–${g.opp_score}</span>`:'';
+        const cls=g.blank?'nofix-row':(g.minutes===0?'blank':'');
+        let dcv=null;
         if(T&&!g.blank&&g.minutes>0){
-          const v=dcCount(g,r.position);
-          if(v!=null){
-            const k=v>=T+5?'dc-over':v>=T?'dc-hit':v>=T-2?'dc-near':'';
-            if(v>=T)hits++;else if(v>=T-2)near++;
-            dc=`<td class="${k}">${v}</td>`;
-          }
+          dcv=dcCount(g,r.position);
+          if(dcv!=null){if(dcv>=T)hits++;else if(dcv>=T-2)near++;}
         }
-        rowsHtml+=`<tr${cls}><td>${g.gw}</td><td>${opp}${res}</td>`+
-          `<td>${g.blank?'<span class="nil">—</span>':(g.minutes??0)}</td>${T?dc:''}`+
-          cols.map(m=>{const v=fmt(g[m.key],m.fmt);
-            return v==null||g[m.key]===0?'<td class="nil">·</td>':`<td>${v}</td>`;}).join('')+
-          (showPts?`<td>${g.blank?'<span class="nil">—</span>':(g.points??'—')}</td>`:'')+'</tr>';
+        const hiCells=hi.map(h=>{
+          if(g.blank)return '<td class="nil">—</td>';
+          const v=fmt(g[h.k],h.k==='xgi'?'2dp':'count');
+          return v==null||g[h.k]===0?'<td class="nil">·</td>':`<td>${v}</td>`;
+        }).join('');
+        const key=`${season}:${g.gw}:${g.fixture||0}`;
+        const open=state.logOpen===key;
+        rowsHtml+=`<tr class="lrow ${cls}${open?' open':''}" data-log="${key}">`+
+          `<td class="lcar">${g.blank?'':(open?'▾':'▸')}</td>`+
+          `<td>${g.gw}</td><td>${opp}${res}</td>`+
+          `<td>${g.blank?'<span class="nil">—</span>':(g.minutes??0)}</td>`+
+          hiCells+`</tr>`;
+        if(open&&!g.blank)rowsHtml+=`<tr class="ldet"><td colspan="${4+hi.length}">`+
+          matchDetail(g,r)+`</td></tr>`;
       }
     }
     const summary=[`${srow.appearances} apps`,`${srow.minutes} min`,
       T&&log?`<span class="dc-hit-i">${hits}</span> DC${near?` · ${near} near`:''}`:null]
       .filter(Boolean).join(' · ');
-    html+=`<details class="lsec"><summary class="lseason">`+
+    const sOpen=state.logSeasons.includes(season);
+    html+=`<details class="lsec"${sOpen?' open':''}>`+
+      `<summary class="lseason" data-season="${season}">`+
       `<span class="lcar">▸</span>${season}${club}<span class="lsum">${summary}</span></summary>`;
     html+=(log&&log.length)
-      ?`<table class="dtable log"><thead><tr><th>GW</th><th>Opponent</th><th title="Minutes">Min</th>`+
-        (T?`<th title="Defensive actions counting toward FPL\u2019s threshold">DC</th>`:'')+
-        cols.map(m=>`<th title="${m.label}">${shortOf(m)}</th>`).join('')+
-        (showPts?'<th title="FPL points">Pts</th>':'')+'</tr></thead><tbody>'+
-        rowsHtml+'</tbody></table>'+
-        (dropped?`<div class="ldrop">${dropped} column${dropped>1?'s':''} hidden — nothing recorded all season</div>`:'')
+      ?`<table class="dtable log"><thead><tr><th></th><th>GW</th><th>Opponent</th>`+
+        `<th title="Minutes">Min</th>`+hi.map(h=>`<th>${h.h}</th>`).join('')+
+        `</tr></thead><tbody>`+rowsHtml+'</tbody></table>'
       :'<div class="lmsg">No per-match data for this season.</div>';
     html+='</details>';
   }
   if(!shown)html+='<div class="lmsg">No Premier League appearances in the selected seasons.</div>';
-  if(T)html+=`<div class="rnote">DC counts the actions FPL uses for defensive points — `+
-    `${r.position==='DEF'?'clearances, blocks, interceptions and tackles':
-      'clearances, blocks, interceptions, tackles and recoveries'}. `+
-    `${r.position==='DEF'?'Defenders':'Midfielders and forwards'} earn 2 points at ${T}+. `+
-    `Green is the threshold met, darker green is ${T+5}+, amber is within two of it.</div>`;
   box.innerHTML=html;
+  box.querySelectorAll('[data-season]').forEach(sm=>{
+    sm.onclick=e=>{
+      e.preventDefault();
+      const v=sm.dataset.season,i=state.logSeasons.indexOf(v);
+      if(i>=0)state.logSeasons.splice(i,1);else state.logSeasons.push(v);
+      renderLog(r,code);};});
+  box.querySelectorAll('[data-log]').forEach(tr=>{
+    tr.onclick=()=>{
+      state.logOpen=state.logOpen===tr.dataset.log?null:tr.dataset.log;
+      renderLog(r,code);};});
 }
 function closeDrawer(){
   state.sel=null;
+  document.getElementById('drawer').classList.remove('wide');
   document.getElementById('drawer').classList.remove('on');
   document.getElementById('drawer').setAttribute('aria-hidden','true');
   document.getElementById('backdrop').classList.remove('on');
   document.querySelectorAll('tbody tr.sel').forEach(tr=>tr.classList.remove('sel'));
 }
-document.getElementById('dClose').onclick=closeDrawer;
 document.getElementById('backdrop').onclick=closeDrawer;
 
 /* Compact headers for the match log, where full labels do not fit */
@@ -1161,8 +1360,9 @@ const shortOf=m=>SHORT[m.key]||m.label;
    (the same plus ball recoveries). Counted from the component columns rather
    than the defcon field, which may hold points rather than actions. */
 const DC_THRESH={DEF:10,MID:12,FWD:12};
-/* defcon is the same actions the DC column already counts, so it is hidden
-   inside the drawer. It stays available in the main table. */
+/* The match log's DC column counts the same actions as defcon, and the radar
+   would gain a fourth axis built from three it already has. Both drop it. The
+   season stat rows keep it — there it duplicates nothing. */
 const DRAWER_HIDE=['defcon'];
 const drawerMetrics=list=>list.filter(m=>!DRAWER_HIDE.includes(m.key));
 function dcCount(g,pos){
@@ -1180,7 +1380,70 @@ const fullName=r=>{
   return n||r.web_name;
 };
 
-/* ---------- avatar ---------- */
+/* Percentile against same-position players clearing the minutes floor, on the
+   adjusted rate. Cached per season range + position. */
+const PCT_POOL=new Map();
+function pctPool(pos){
+  const k=seasonsInRange().join('|')+'|'+pos;
+  if(PCT_POOL.has(k))return PCT_POOL.get(k);
+  const f=radarFloor();
+  const out=aggregate().filter(x=>x.position===pos&&x.minutes>=f);
+  PCT_POOL.set(k,out);return out;
+}
+function pctFor(p,m){
+  const pool=pctPool(p.position),f=m.key+'_adj90',v=p[f];
+  if(v==null||pool.length<8)return null;
+  const vals=pool.map(x=>x[f]).filter(x=>x!=null);
+  if(vals.length<8)return null;
+  const below=vals.filter(x=>(m.dir??1)>0?x<v:x>v).length;
+  return Math.round(below/(vals.length-1)*100);
+}
+const RANK_CACHE=new Map();
+function rankFor(p,m){
+  const key=seasonsInRange().join('|')+'|'+p.position+'|'+m.key;
+  let map=RANK_CACHE.get(key);
+  if(!map){
+    const f=m.key+'_adj90';
+    const sorted=pctPool(p.position).filter(x=>x[f]!=null)
+      .sort((a,b)=>(b[f]-a[f])*(m.dir??1));
+    map=new Map();sorted.forEach((x,i)=>map.set(x.player_code,i+1));
+    map.set('n',sorted.length);
+    RANK_CACHE.set(key,map);
+  }
+  return {r:map.get(p.player_code)??null,n:map.get('n')||0};
+}
+const rkTag=(p,m)=>{const{r,n}=rankFor(p,m);
+  return r==null?'':`<span class="srk" title="rank ${r} of ${n} ${p.position}s">(${r})</span>`;};
+const pctBand=p=>p==null?'na':p>=80?'b4':p>=60?'b3':p>=40?'b2':p>=20?'b1':'b0';
+
+/* One player: FBref-style percentile bar. Two: Squawka-style split bar showing
+   share of the pair, with a percentile chip at each end. */
+function statRows(ms,a,b,frame){
+  const val=(p,m)=>fmt(p[m.key+'_'+frame],frame==='share'?'pct':m.fmt);
+  if(!b) return '<div class="srows">'+ms.map(m=>{
+    const pc=pctFor(a,m);
+    return `<div class="srow"><span class="slab">${m.label}${(m.dir??1)<0?' ↓':''}</span>`+
+      `<span class="sval">${val(a,m)??'—'}${rkTag(a,m)}</span>`+
+      `<span class="strack"><span class="sfill" style="width:${pc??0}%"></span></span>`+
+      `<span class="chip ${pctBand(pc)}">${pc??'—'}</span></div>`;}).join('')+'</div>';
+  return '<div class="srows two">'+ms.map(m=>{
+    const pa=pctFor(a,m),pb=pctFor(b,m);
+    const va=a[m.key+'_'+frame],vb=b[m.key+'_'+frame];
+    const ok=va!=null&&vb!=null&&!Number.isNaN(va)&&!Number.isNaN(vb);
+    const tot=ok?Math.abs(va)+Math.abs(vb):0;
+    const wa=ok&&tot>0?Math.abs(va)/tot*100:50;
+    const dir=m.dir??1;
+    const lead=!ok?'':dir>0?(va>vb?'a':va<vb?'b':''):(va<vb?'a':va>vb?'b':'');
+    return `<div class="srow2"><span class="slab">${m.label}${dir<0?' ↓':''}</span>`+
+      `<span class="sval r ${lead==='a'?'lead':'dim'}">${val(a,m)??'—'}${rkTag(a,m)}</span>`+
+      `<span class="chip ${pctBand(pa)}">${pa??'—'}</span>`+
+      `<span class="split"><span class="pa" style="width:${wa.toFixed(1)}%"></span>`+
+      `<span class="pb"></span></span>`+
+      `<span class="chip ${pctBand(pb)}">${pb??'—'}</span>`+
+      `<span class="sval ${lead==='b'?'lead':'dim'}">${val(b,m)??'—'}${rkTag(b,m)}</span></div>`;}).join('')+'</div>';
+}
+
+/* ---------- avatar ---------- *//* ---------- avatar ---------- */
 /* The source PNG's shirt sits at hue 204-209 while skin and hair are at
    27-31, so the shirt can be repainted without touching the face. Light
    pixels (shoulders, sleeves) take the club's second colour, the rest the
@@ -1277,7 +1540,89 @@ const NATION_ISO={
 };
 const flagFor=nat=>NATION_ISO[nat]||null;
 
-/* ---------- radar ---------- */
+/* FPL scoring is deterministic and every component is in the match log, so the
+   points breakdown is derived rather than waiting on the explain export. Any
+   gap between derived and actual is shown rather than hidden. */
+function fplBreakdown(g,pos){
+  const L=[],add=(label,detail,pts)=>{if(pts||detail!=null)L.push({label,detail,pts});};
+  const n=v=>v??0;
+  if(n(g.minutes)>0)add('Minutes',`${g.minutes}'`,g.minutes>=60?2:1);
+  const gv={GK:6,DEF:6,MID:5,FWD:4}[pos]??4;
+  if(n(g.goals))add('Goals',`${g.goals} × ${gv}`,g.goals*gv);
+  if(n(g.assists))add('Assists',`${g.assists} × 3`,g.assists*3);
+  const cv={GK:4,DEF:4,MID:1,FWD:0}[pos]??0;
+  if(n(g.cs)&&cv)add('Clean sheet',null,cv);
+  if(n(g.saves)>=3)add('Saves',`${g.saves} ÷ 3`,Math.floor(g.saves/3));
+  if(n(g.pensaved))add('Penalty saved',`${g.pensaved} × 5`,g.pensaved*5);
+  if((pos==='GK'||pos==='DEF')&&n(g.gc)>=2)
+    add('Goals conceded',`${g.gc} ÷ 2`,-Math.floor(g.gc/2));
+  const T=DC_THRESH[pos],dc=T?dcCount(g,pos):null;
+  if(T&&dc!=null&&dc>=T)add('Defensive contribution',`${dc} ≥ ${T}`,2);
+  if(n(g.penmissed))add('Penalty missed',`${g.penmissed} × −2`,g.penmissed*-2);
+  if(n(g.yellow))add('Yellow card',`${g.yellow} × −1`,g.yellow*-1);
+  if(n(g.red))add('Red card',`${g.red} × −3`,g.red*-3);
+  if(n(g.og))add('Own goal',`${g.og} × −2`,g.og*-2);
+  if(n(g.bonus))add('Bonus',g.bps!=null?`${g.bps} BPS`:null,g.bonus);
+  const derived=L.reduce((a,x)=>a+x.pts,0);
+  const actual=g.points;
+  if(actual!=null&&derived!==actual)
+    L.push({label:'Unexplained',detail:'derived total differs from FPL',
+      pts:actual-derived,odd:true});
+  return {lines:L,total:actual??derived};
+}
+
+/* Expanded detail for one match. Performance is football only — no points, no
+   thresholds. Fantasy is points only. */
+function matchDetail(g,r){
+  const fan=state.radarMode==='fantasy';
+  if(fan){
+    /* FPL's own breakdown where the live file provided it, ours where it did
+       not. Which one is in use is stated rather than assumed. */
+    const own=Array.isArray(g.explain)&&g.explain.length;
+    let lines,total,src;
+    if(own){
+      lines=g.explain.map(e=>({label:e.label||e.identifier,
+        detail:e.value!=null?String(e.value):null,pts:e.points??0}));
+      total=g.points??lines.reduce((a,x)=>a+x.pts,0);
+      const sum=lines.reduce((a,x)=>a+x.pts,0);
+      if(g.points!=null&&sum!==g.points)
+        lines.push({label:'Unexplained',detail:'components do not sum to the total',
+          pts:g.points-sum,odd:true});
+      src='FPL';
+    }else{
+      const d=fplBreakdown(g,r.position);
+      lines=d.lines;total=d.total;src='derived';
+    }
+    const rows=lines.map(x=>
+      `<div class="mdc${x.odd?' odd':''}"><span class="mdk">${x.label}`+
+      (x.detail?` <span class="mdt">${x.detail}</span>`:'')+`</span>`+
+      `<span class="mdv${x.pts<0?' neg':''}">${x.pts>0?'+':''}${x.pts}</span></div>`).join('');
+    return `<div class="mdhead"><span class="mdwhat">Points</span>`+
+      `<span class="mdsrc${own?'':' der'}" title="${own
+        ?'From FPL\u2019s own per-match breakdown'
+        :'Derived from the scoring rules — FPL did not publish a breakdown for this match'
+      }">${src}</span></div>`+
+      `<div class="mdgrid one">${rows}`+
+      `<div class="mdc total"><span class="mdk">Total</span>`+
+      `<span class="mdv">${total}</span></div></div>`;
+  }
+  const groups=['Attacking','Defensive','Goalkeeping','Discipline'];
+  let body='';
+  for(const grp of groups){
+    const ms=METRICS.filter(m=>m.group===grp&&m.pos.includes(r.position)&&
+      g[m.key]!=null&&g[m.key]!==0);
+    if(!ms.length)continue;
+    body+=`<div class="mdsub">${grp}</div>`+ms.map(m=>{
+      const v=fmt(g[m.key],m.fmt==='1dp'?'1dp':'count');
+      return `<div class="mdc"><span class="mdk">${m.label}</span>`+
+        `<span class="mdv">${v}</span></div>`;}).join('');
+  }
+  if(!body)body='<div class="mdempty">Nothing recorded in this match.</div>';
+  return `<div class="mdhead"><span class="mdwhat">Performance</span></div>`+
+    `<div class="mdgrid">${body}</div>`;
+}
+
+/* ---------- radar ---------- *//* ---------- radar ---------- */
 /* Events too rare to percentile: nearly everyone sits at zero, so shrinkage
    turns the axis into a proxy for minutes played rather than the metric
    itself. ICT and net points are dropped as duplicates of their components. */
@@ -1337,7 +1682,7 @@ function radarSVG(r,groups){
   const at=(i,rad)=>[cx+Math.cos(ang(i))*rad,cy+Math.sin(ang(i))*rad];
   const GCOL={Attacking:'var(--g-att)',Defensive:'var(--g-def)',Goalkeeping:'var(--g-gk)',
     Discipline:'var(--g-dis)',Fantasy:'var(--g-fpl)'};
-  const col=groups.length===1?(GCOL[groups[0]]||'var(--ink)'):'var(--ink)';
+  const col=cmp?'var(--pa)':(groups.length===1?(GCOL[groups[0]]||'var(--ink)'):'var(--ink)');
 
   let s=`<svg viewBox="0 0 ${W} ${H}" class="radar" role="img">`;
   for(const ring of [20,40,60,80,100]){
@@ -1375,16 +1720,7 @@ function radarSVG(r,groups){
     legend=`<div class="rleg">`+
       `<span><i class="sw" style="--rc:${col}"></i>${r.web_name}</span>`+
       `<span><i class="sw cmp"></i>${cmp.web_name}</span></div>`;
-    delta='<table class="dtable cmp"><thead><tr><th>Axis</th>'+
-      `<th>${r.web_name}</th><th>${cmp.web_name}</th><th>Diff</th></tr></thead><tbody>`+
-      pts.map((p,i)=>{
-        const c=cpts[i],d=(p.pct!=null&&c.pct!=null)?p.pct-c.pct:null;
-        const dc=d==null?'nil':d>0?'up':d<0?'down':'';
-        return `<tr><td>${p.m.label}${p.m.dir<0?' \u2193':''}</td>`+
-          `<td>${p.pct??'\u2014'}<span class="rraw2">${fmt(p.raw,p.m.fmt)??''}</span></td>`+
-          `<td>${c.pct??'\u2014'}<span class="rraw2">${fmt(c.raw,p.m.fmt)??''}</span></td>`+
-          `<td class="${dc}">${d==null?'\u2014':(d>0?'+':'')+d}</td></tr>`;}).join('')+
-      '</tbody></table>';
+    delta='';
   }
 
   const anyInv=pts.some(p=>p.m.dir<0);

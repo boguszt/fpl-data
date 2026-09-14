@@ -33,13 +33,20 @@ from transform.load import (
     load_metric_direction,
     load_players_raw,
     load_region_lookup,
+    load_style_features,
     load_teams_csv,
     load_vaastav_fixtures,
     load_live_payloads,
 )
 from transform.validate import validate_marts
-from transform.derived import build_derived_tables
+from transform.derived import build_derived_tables, season_element_type
 from transform.opta import build_fact_player_season_opta, print_coverage
+from transform.style import (
+    CHOSEN_K,
+    build_cluster_tables,
+    build_fact_player_style,
+    print_style_coverage,
+)
 
 FLOAT_COLS = [
     "influence",
@@ -1321,6 +1328,23 @@ def build_marts() -> None:
     print(f"  fact_player_season_opta {len(fact_player_season_opta)}", flush=True)
     print_coverage(opta_coverage)
 
+    print("building fact_player_style...", flush=True)
+    positions = season_element_type(players_raw, bootstrap)
+    fact_player_style = build_fact_player_style(
+        fact_player_season_opta,
+        derived["fact_player_season_availability"],
+        positions,
+        load_style_features(),
+    )
+    print(f"  fact_player_style {len(fact_player_style)}", flush=True)
+    print_style_coverage(fact_player_style)
+
+    print(f"fitting style clusters k={CHOSEN_K}...", flush=True)
+    dim_style_cluster, fact_player_cluster = build_cluster_tables(
+        fact_player_style, load_style_features(), k=CHOSEN_K
+    )
+    print(f"  fact_player_cluster {len(fact_player_cluster)}", flush=True)
+
     tables = {
         "dim_player": dim_player,
         "dim_team": dim_team,
@@ -1336,6 +1360,9 @@ def build_marts() -> None:
             columns=["player_code", "season", "start_cost", "end_cost", "total_points", "minutes"]
         ),
         "fact_player_season_opta": fact_player_season_opta,
+        "fact_player_style": fact_player_style,
+        "dim_style_cluster": dim_style_cluster,
+        "fact_player_cluster": fact_player_cluster,
         **derived,
     }
     print("validating...")

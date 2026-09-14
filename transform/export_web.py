@@ -12,6 +12,18 @@ import duckdb
 import pandas as pd
 
 from ingest.paths import MARTS, REPO_ROOT
+from transform.explain import attach_explain, load_explain_index
+from transform.web_price import (
+    NULL_PRICE_SEASONS,
+    PRICE_FROM_SEASON,
+    build_pricehistory,
+    load_gw_deadlines,
+    load_snap_frame,
+    matchlog_prices,
+    season_price_columns,
+    validate_pricehistory,
+    _null_season_cols,
+)
 
 WEB_DATA = REPO_ROOT / "web" / "data"
 
@@ -25,6 +37,10 @@ TABLES = (
     "dim_player",
     "dim_team",
     "dim_region",
+    "snap_player_day",
+    "fact_player_style",
+    "dim_style_cluster",
+    "fact_player_cluster",
 )
 
 POSITION_LABEL = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
@@ -139,7 +155,7 @@ METRIC_FROM_SEASON = {
     "defcon": "2025-26",
 }
 
-KEEP_JSON = {"manifest.json"}
+KEEP_JSON = {"manifest.json", "clusters.json", "metrics_register.json"}
 
 
 def _parquet(name: str) -> str:
@@ -338,7 +354,10 @@ def load_rows(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     ).df()
 
 
-def build_season_rows(frame: pd.DataFrame) -> dict[str, list[dict]]:
+def build_season_rows(
+    frame: pd.DataFrame, price_cols: dict[tuple[str, int], dict] | None = None
+) -> dict[str, list[dict]]:
+    price_cols = price_cols or {}
     by_season: dict[str, list[dict]] = {}
     dropped_minutes = 0
     print("season export (drop 0 appearances)", flush=True)
@@ -375,10 +394,14 @@ def build_season_rows(frame: pd.DataFrame) -> dict[str, list[dict]]:
             row[f"{key}_total"] = (
                 _as_round2(rec.get(col)) if _metric_live(key, season) else None
             )
-        for key in TEAM_MAP:
+        for key, col in TEAM_MAP.items():
             row[f"{key}_team"] = (
                 _as_round2(rec.get(f"{key}_team")) if _metric_live(key, season) else None
             )
+        priced = _null_season_cols()
+        if season >= PRICE_FROM_SEASON and row["player_code"] is not None:
+            priced.update(price_cols.get((season, row["player_code"]), {}))
+        row.update(priced)
         by_season.setdefault(season, []).append(row)
 
     for rows in by_season.values():
@@ -580,7 +603,26 @@ def _gw_metric_value(key: str, rec: dict, season: str, pos: int | None):
     return _as_round2(raw)
 
 
-def build_matchlogs(frame: pd.DataFrame) -> dict[str, dict[str, list[dict]]]:
+def _matchlog_price_fields(
+    gw_prices: dict[tuple[str, int, int], dict],
+    season: str,
+    code: int,
+    gw: int | None,
+) -> dict:
+    if season in NULL_PRICE_SEASONS or season < PRICE_FROM_SEASON or gw is None:
+        return {"price": None, "price_delta": None}
+    return gw_prices.get((season, code, gw), {"price": None, "price_delta": None})
+
+
+def build_matchlogs(
+    frame: pd.DataFrame,
+    gw_prices: dict[tuple[str, int, int], dict] | None = None,
+    explain_lookup: dict | None = None,
+    live_gws: set | None = None,
+) -> dict[str, dict[str, list[dict]]]:
+    gw_prices = gw_prices or {}
+    explain_lookup = explain_lookup or {}
+    live_gws = live_gws or set()
     by_season: dict[str, dict[str, list[dict]]] = {}
     for rec in frame.to_dict("records"):
         season = str(rec["season"])
@@ -605,6 +647,7 @@ def build_matchlogs(frame: pd.DataFrame) -> dict[str, dict[str, list[dict]]]:
             }
             for key in GW_METRIC_MAP:
                 row[key] = None
+            row.update(_matchlog_price_fields(gw_prices, season, code, gw))
             by_season.setdefault(season, {}).setdefault(str(code), []).append(row)
             continue
         home_v = rec.get("was_home")
@@ -635,6 +678,16 @@ def build_matchlogs(frame: pd.DataFrame) -> dict[str, dict[str, list[dict]]]:
             row[key] = _gw_metric_value(key, rec, season, pos)
         if row["points"] is None and row["minutes"] == 0:
             row["points"] = 0
+        row.update(_matchlog_price_fields(gw_prices, season, code, gw))
+        attach_explain(
+            row,
+            season=season,
+            gw=gw,
+            player_code=code,
+            fixture_id=row["fixture"],
+            lookup=explain_lookup,
+            live_gws=live_gws,
+        )
         by_season.setdefault(season, {}).setdefault(str(code), []).append(row)
     return by_season
 
@@ -676,8 +729,70 @@ def _matchlog_coverage(frame: pd.DataFrame) -> list[dict]:
     return rows
 
 
+def _as_round4(v):
+    if _is_na(v):
+        return None
+    return round(float(v), 4)
+
+
+def export_style_json(keep: set[str]) -> None:
+    """clusters.json plus style_{season}.json for seasons with assignments."""
+    from transform.load import load_style_features
+    from transform.style import CLUSTER_NOTE_LIST, clustering_feature_names
+
+    dim = pd.read_parquet(MARTS / "dim_style_cluster.parquet")
+    fact = pd.read_parquet(MARTS / "fact_player_cluster.parquet")
+    style = pd.read_parquet(MARTS / "fact_player_style.parquet")
+    feats = clustering_feature_names(load_style_features())
+    zcols = [f"{n}_z" for n in feats]
+
+    clusters = []
+    for _, row in dim.sort_values("cluster_id").iterrows():
+        centroid = [_as_round4(row[name]) for name in feats]
+        if any(v is None for v in centroid):
+            raise RuntimeError(f"cluster {int(row['cluster_id'])} has a null centroid")
+        clusters.append(
+            {
+                "cluster_id": int(row["cluster_id"]),
+                "label": str(row["label"]),
+                "description": str(row["description"]),
+                "n": int(row["n_player_seasons"]),
+                "centroid": centroid,
+            }
+        )
+    catalog = {"features": feats, "notes": list(CLUSTER_NOTE_LIST), "clusters": clusters}
+    nbytes, changed = _write_json(WEB_DATA / "clusters.json", catalog)
+    flag = "" if changed else "  unchanged"
+    print(f"  {'clusters.json':28} {nbytes:8,} bytes  {len(clusters)} clusters{flag}", flush=True)
+    keep.add("clusters.json")
+
+    joined = fact.merge(style, on=["season", "player_code"], how="left")
+    print("web/data style", flush=True)
+    for season in sorted(joined["season"].astype(str).unique()):
+        name = f"style_{season}.json"
+        keep.add(name)
+        payload = {}
+        block = joined.loc[joined["season"].astype(str) == season]
+        for rec in block.to_dict(orient="records"):
+            z = [_as_round4(rec[col]) for col in zcols]
+            if any(v is None for v in z):
+                raise RuntimeError(
+                    f"incomplete clustering z-vector for {season} {rec['player_code']}"
+                )
+            payload[str(int(rec["player_code"]))] = {
+                "z": z,
+                "c": int(rec["cluster_id"]),
+                "d": _as_round4(rec["distance"]),
+                "c2": int(rec["second_cluster_id"]),
+                "d2": _as_round4(rec["second_distance"]),
+            }
+        nbytes, changed = _write_json(WEB_DATA / name, payload)
+        flag = "" if changed else "  unchanged"
+        print(f"  {name:28} {nbytes:8,} bytes  {len(payload):4} players{flag}", flush=True)
+
+
 def _write_json(path: Path, obj) -> tuple[int, bool]:
-    encoded = json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    encoded = json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and path.read_bytes() == encoded:
         return len(encoded), False
@@ -731,11 +846,42 @@ def export() -> dict:
         frame = load_rows(con)
         log_frame = load_matchlog_rows(con)
         _confirm_xa_source(con)
+        print("loading snap_player_day for price/own...", flush=True)
+        snaps = load_snap_frame(con)
+        print(f"  snap rows {len(snaps)}", flush=True)
     finally:
         con.close()
 
-    by_season = build_season_rows(frame)
-    matchlogs = build_matchlogs(log_frame)
+    print("gw deadlines", flush=True)
+    deadlines = load_gw_deadlines()
+    price_cols = season_price_columns(snaps)
+    gw_keys = log_frame[["season", "player_code", "gw"]].drop_duplicates()
+    gw_prices = matchlog_prices(snaps, deadlines, gw_keys)
+    histories = build_pricehistory(snaps)
+
+    map_path = MARTS / "dim_season_map.parquet"
+    player_map: dict[tuple[str, int], int] = {}
+    if map_path.exists():
+        sm = pd.read_parquet(map_path, columns=["season", "element_id", "player_code"])
+        sm = sm.dropna(subset=["season", "element_id", "player_code"])
+        for rec in sm.to_dict("records"):
+            try:
+                player_map[(str(rec["season"]), int(rec["element_id"]))] = int(rec["player_code"])
+            except (TypeError, ValueError):
+                continue
+    explain_lookup, live_gws = load_explain_index(player_map)
+    if live_gws:
+        by_s: dict[str, list[int]] = {}
+        for season, gw in sorted(live_gws):
+            by_s.setdefault(season, []).append(gw)
+        print("live explain coverage", flush=True)
+        for season, gws in by_s.items():
+            print(f"  {season}  gws={len(gws)}  ({min(gws)}-{max(gws)})  blocks={sum(1 for k in explain_lookup if k[0]==season)}", flush=True)
+    else:
+        print("live explain coverage: none (vaastav-only matchlogs)", flush=True)
+
+    by_season = build_season_rows(frame, price_cols)
+    matchlogs = build_matchlogs(log_frame, gw_prices, explain_lookup, live_gws)
     keep_codes = {
         season: {str(r["player_code"]) for r in rows if r.get("player_code") is not None}
         for season, rows in by_season.items()
@@ -744,6 +890,17 @@ def export() -> dict:
         season: {code: rows for code, rows in players.items() if code in keep_codes.get(season, set())}
         for season, players in matchlogs.items()
     }
+    histories = {
+        season: {
+            code: obj
+            for code, obj in players.items()
+            if code in keep_codes.get(season, set())
+        }
+        for season, players in histories.items()
+        if season >= PRICE_FROM_SEASON
+    }
+    histories = {season: players for season, players in histories.items() if players}
+    validate_pricehistory(histories, price_cols, by_season, matchlogs)
     coverage = _matchlog_coverage(log_frame)
     WEB_DATA.mkdir(parents=True, exist_ok=True)
 
@@ -770,9 +927,11 @@ def export() -> dict:
         nbytes, changed = _write_json(WEB_DATA / name, payload)
         n_players = len(payload)
         n_rows = sum(len(v) for v in payload.values())
+        n_explain = sum(1 for rows in payload.values() for r in rows if "explain" in r)
         flag = "" if changed else "  unchanged"
         print(
-            f"  {name:28} {nbytes:8,} bytes  {n_players:4} players  {n_rows:6} rows{flag}",
+            f"  {name:28} {nbytes:8,} bytes  {n_players:4} players  {n_rows:6} rows  "
+            f"explain={n_explain}{flag}",
             flush=True,
         )
         if nbytes > 25 * 1024 * 1024:
@@ -797,6 +956,67 @@ def export() -> dict:
             f"missing_fixture={row['missing_fixture']}",
             flush=True,
         )
+
+    print("web/data pricehistory", flush=True)
+    pricehistory_blobs: dict[str, bytes] = {}
+    pricehistory_total = 0
+    for season in sorted(histories.keys(), reverse=True):
+        blob = json.dumps(
+            histories[season],
+            ensure_ascii=False,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        pricehistory_blobs[season] = blob
+        pricehistory_total += len(blob)
+        print(
+            f"  {'pricehistory_' + season + '.json':28} {len(blob):8,} bytes  "
+            f"{len(histories[season]):4} players",
+            flush=True,
+        )
+    print(f"  pricehistory total {pricehistory_total:,} bytes", flush=True)
+    if pricehistory_total > 25 * 1024 * 1024:
+        print(
+            "STOP: pricehistory_*.json total exceeds 25 MB. "
+            "Not writing those files. Options: weekly ownership for completed "
+            "seasons, or one season per commit.",
+            flush=True,
+        )
+        raise SystemExit(1)
+    for season, blob in pricehistory_blobs.items():
+        name = f"pricehistory_{season}.json"
+        keep.add(name)
+        path = WEB_DATA / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() and path.read_bytes() == blob:
+            print(f"  {name:28} unchanged", flush=True)
+            continue
+        path.write_bytes(blob)
+
+    print("web/data clusters", flush=True)
+    export_style_json(keep)
+
+    print("web/data metric register", flush=True)
+    from transform.metric_register import (
+        build_metric_register,
+        print_tier_counts,
+        validate_metric_register,
+        write_metric_register,
+        write_metrics_register_json,
+    )
+
+    register = build_metric_register()
+    write_metric_register(register)
+    write_metrics_register_json(register, WEB_DATA / "metrics_register.json")
+    keep.add("metrics_register.json")
+    print_tier_counts(register)
+    reg_errs = validate_metric_register(register, WEB_DATA)
+    if reg_errs:
+        print("metric register checks:", flush=True)
+        for err in reg_errs:
+            print(f"  {err}", flush=True)
+        raise RuntimeError("metric register validation failed:\n- " + "\n- ".join(reg_errs))
+    print("metric register validation passed", flush=True)
 
     manifest = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

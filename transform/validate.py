@@ -151,6 +151,8 @@ def validate_marts(con, extra_checks: dict) -> None:
     _validate_derived(con, errors)
     _validate_snap_player_day(con, errors)
     _validate_opta(con, errors)
+    _validate_style(con, errors)
+    _validate_clusters(con, errors)
 
     if errors:
         raise MartValidationError("mart validation failed:\n- " + "\n- ".join(errors))
@@ -808,6 +810,186 @@ def _validate_opta(con, errors: list[str]) -> None:
             errors.append(
                 f"{bad} pass_accuracy values where total_pass is 0/NULL"
             )
+
+
+def _validate_style(con, errors: list[str]) -> None:
+    tables = {r[0] for r in con.execute("SHOW TABLES").fetchall()}
+    if "fact_player_style" not in tables:
+        errors.append("missing fact_player_style")
+        return
+    dupes = con.execute(
+        """
+        SELECT season, player_code, COUNT(*) AS n
+        FROM fact_player_style
+        GROUP BY 1, 2
+        HAVING COUNT(*) > 1
+        """
+    ).df()
+    if not dupes.empty:
+        errors.append(f"duplicate fact_player_style keys: {len(dupes)}")
+
+    counts = con.execute(
+        """
+        SELECT season, COUNT(*) AS players
+        FROM fact_player_style
+        GROUP BY season
+        ORDER BY season
+        """
+    ).df()
+    _print_table("fact_player_style players per season", counts)
+
+    if "fact_player_season_availability" in tables:
+        movers = con.execute(
+            """
+            SELECT COUNT(*) FROM fact_player_style s
+            LEFT JOIN fact_player_season_availability a
+              ON s.season = a.season
+             AND s.player_code = a.player_code
+             AND a.grain = 'season'
+            WHERE s.pass_share_of_team IS NOT NULL
+              AND (a.spell_count IS NULL OR a.spell_count <> 1)
+            """
+        ).fetchone()[0]
+        if movers:
+            errors.append(
+                f"{movers} pass_share_of_team values on multi-club/unknown spells"
+            )
+
+    if "fact_player_season_opta" in tables:
+        thin = con.execute(
+            """
+            SELECT COUNT(*) FROM fact_player_style s
+            JOIN fact_player_season_opta o USING (season, player_code)
+            WHERE s.fwd_pass_share IS NOT NULL
+              AND (o.total_pass IS NULL OR o.total_pass < 200)
+            """
+        ).fetchone()[0]
+        if thin:
+            errors.append(
+                f"{thin} fwd_pass_share values where total_pass < 200"
+            )
+        thin_t = con.execute(
+            """
+            SELECT COUNT(*) FROM fact_player_style s
+            JOIN fact_player_season_opta o USING (season, player_code)
+            WHERE s.take_on_rate IS NOT NULL
+              AND (o.touches IS NULL OR o.touches < 200)
+            """
+        ).fetchone()[0]
+        if thin_t:
+            errors.append(
+                f"{thin_t} take_on_rate values where touches < 200"
+            )
+
+
+def _validate_clusters(con, errors: list[str]) -> None:
+    from transform.style import CHOSEN_K, CLUSTER_META, EXCLUDE_FROM_CLUSTERING
+
+    tables = {r[0] for r in con.execute("SHOW TABLES").fetchall()}
+    if "dim_style_cluster" not in tables or "fact_player_cluster" not in tables:
+        errors.append("missing dim_style_cluster or fact_player_cluster")
+        return
+
+    dim = con.execute(
+        """
+        SELECT cluster_id, label, description, n_player_seasons, note
+        FROM dim_style_cluster
+        ORDER BY cluster_id
+        """
+    ).df()
+    if len(dim) != CHOSEN_K:
+        errors.append(f"dim_style_cluster has {len(dim)} rows, expected {CHOSEN_K}")
+    ids = [int(x) for x in dim["cluster_id"].tolist()] if not dim.empty else []
+    if ids != list(range(CHOSEN_K)):
+        errors.append(f"dim_style_cluster ids {ids}, expected 0..{CHOSEN_K - 1}")
+    for cid, (label, desc) in CLUSTER_META.items():
+        row = dim.loc[dim["cluster_id"] == cid]
+        if row.empty:
+            continue
+        got_label = str(row.iloc[0]["label"])
+        got_desc = str(row.iloc[0]["description"])
+        if got_label != label:
+            errors.append(f"cluster {cid} label {got_label!r}, expected {label!r}")
+        if got_desc != desc:
+            errors.append(f"cluster {cid} description mismatch")
+    if dim["note"].isna().any() or (dim["note"].astype(str).str.strip() == "").any():
+        errors.append("dim_style_cluster.note is blank")
+    _print_table("dim_style_cluster", dim[["cluster_id", "label", "n_player_seasons"]])
+
+    dupes = con.execute(
+        """
+        SELECT season, player_code, COUNT(*) AS n
+        FROM fact_player_cluster
+        GROUP BY 1, 2
+        HAVING COUNT(*) > 1
+        """
+    ).df()
+    if not dupes.empty:
+        errors.append(f"duplicate fact_player_cluster keys: {len(dupes)}")
+
+    unknown = con.execute(
+        """
+        SELECT COUNT(*) FROM fact_player_cluster f
+        LEFT JOIN dim_style_cluster d USING (cluster_id)
+        WHERE d.cluster_id IS NULL
+        """
+    ).fetchone()[0]
+    if unknown:
+        errors.append(f"{unknown} fact_player_cluster rows with unknown cluster_id")
+
+    same = con.execute(
+        """
+        SELECT COUNT(*) FROM fact_player_cluster
+        WHERE cluster_id = second_cluster_id
+        """
+    ).fetchone()[0]
+    if same:
+        errors.append(f"{same} rows where second_cluster_id equals cluster_id")
+
+    inverted = con.execute(
+        """
+        SELECT COUNT(*) FROM fact_player_cluster
+        WHERE second_distance + 1e-9 < distance
+        """
+    ).fetchone()[0]
+    if inverted:
+        errors.append(f"{inverted} rows where second_distance < distance")
+
+    counts = con.execute(
+        """
+        SELECT season, COUNT(*) AS players
+        FROM fact_player_cluster
+        GROUP BY season
+        ORDER BY season
+        """
+    ).df()
+    _print_table("fact_player_cluster players per season", counts)
+
+    n_mismatch = con.execute(
+        """
+        SELECT d.cluster_id, d.n_player_seasons, COUNT(f.player_code) AS n
+        FROM dim_style_cluster d
+        LEFT JOIN fact_player_cluster f USING (cluster_id)
+        GROUP BY d.cluster_id, d.n_player_seasons
+        HAVING d.n_player_seasons IS DISTINCT FROM COUNT(f.player_code)
+        """
+    ).df()
+    if not n_mismatch.empty:
+        errors.append("dim_style_cluster.n_player_seasons does not match fact counts")
+
+    if "fact_player_style" in tables:
+        excluded = con.execute(
+            f"""
+            SELECT COUNT(*) FROM fact_player_cluster c
+            JOIN fact_player_style s USING (season, player_code)
+            WHERE s.element_type IN ({", ".join(str(x) for x in sorted(EXCLUDE_FROM_CLUSTERING))})
+            """
+        ).fetchone()[0]
+        if excluded:
+            errors.append(
+                f"{excluded} clustered rows are goalkeepers/managers"
+            )
+
 
 
 
