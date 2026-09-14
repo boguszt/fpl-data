@@ -44,7 +44,20 @@ jobs:
           git add web/data/*.json
           if git diff --cached --quiet; then
             echo "no web data changes"
-          else
-            git commit -m "chore: web player-table json"
-            git push
+            exit 0
           fi
+          echo "staged web/data files:"
+          total=0
+          while IFS= read -r f; do
+            size=$(git cat-file -s ":$f")
+            printf '  %s  %s bytes\n' "$f" "$size"
+            total=$((total + size))
+          done < <(git diff --cached --name-only -- web/data)
+          echo "staged web/data total: ${total} bytes"
+          limit=$((30 * 1024 * 1024))
+          if [ "$total" -gt "$limit" ]; then
+            echo "web/data staged size exceeds 30 MB (${total} bytes). Refusing to commit — this looks like a match-log rewrite leak, not a normal gameweek."
+            exit 1
+          fi
+          git commit -m "chore: web player-table json"
+          git push

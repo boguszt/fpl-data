@@ -1,10 +1,40 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
 echo Pulling the latest files from GitHub...
-git pull --quiet --ff-only
-if errorlevel 1 echo Git pull failed. Opening the copy already on this computer.
+set "PULLLOG=%TEMP%\fpl-git-pull.txt"
+set "OLDHEAD="
+for /f %%H in ('git rev-parse HEAD 2^>nul') do set "OLDHEAD=%%H"
+
+git pull --ff-only > "%PULLLOG%" 2>&1
+if errorlevel 1 (
+  echo.
+  echo.
+  echo.
+  echo ============================================================
+  echo   UPDATE FAILED — this site will show older data
+  echo ============================================================
+  echo.
+  echo Git could not download the latest files.
+  echo The usual reason is uncommitted edits in this folder
+  echo ^(Cursor often leaves some^). Git will not overwrite those.
+  echo.
+  echo What git said:
+  echo ------------------------------------------------------------
+  type "%PULLLOG%"
+  echo ------------------------------------------------------------
+  echo.
+  echo What to do: commit or stash those edits, then double-click
+  echo this file again. The site will still open with whatever is
+  echo already on this computer.
+  echo.
+  echo ============================================================
+  echo.
+) else if defined OLDHEAD (
+  for /f %%C in ('git rev-list --count !OLDHEAD!..HEAD') do set "N=%%C"
+  if not "!N!"=="0" echo Pulled !N! new commit(s) from GitHub.
+)
 
 echo Checking that Python is installed...
 set "PY="

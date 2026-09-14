@@ -8,7 +8,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ingest.client import FplClient, finalised_gameweeks, season_from_bootstrap
-from transform.build import build_marts
 
 
 def main() -> None:
@@ -27,8 +26,6 @@ def main() -> None:
         print(f"finalised gameweeks: {gws}")
         for gw in gws:
             client.pull_live_if_missing(season, gw)
-    print("=== transform ===")
-    build_marts()
 
 
 if __name__ == "__main__":

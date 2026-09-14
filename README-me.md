@@ -22,7 +22,8 @@ If it says ports 8000–8002 are in use, something else on this computer is alre
 
 1. Close the black window.
 2. Double-click `start-fpl.bat` again. The first thing it does is download the latest files from GitHub into this folder.
-3. If the page still looks stale, press Ctrl+F5 in the browser (a hard refresh).
+3. If a big **UPDATE FAILED** banner appears in the black window, Git could not update this folder — usually because there are unsaved or uncommitted edits. The site will still open, but with older numbers. Commit or stash those edits and try again.
+4. If the page still looks stale, press Ctrl+F5 in the browser (a hard refresh).
 
 The numbers come from the `web/data` folder on this computer. GitHub is only the source those files are copied from.
 

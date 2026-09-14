@@ -44,7 +44,7 @@ uv run python transform/spot_check.py
 
 `backfill.py` pulls [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League) seasons 2016-17 through 2026-27, snapshots the live FPL API, caches `element-summary` `history_past` at ~1 req/sec, then rebuilds marts.
 
-`update.py` always writes a gzipped `bootstrap-static` snapshot (the timestamp is the data). Fixtures are re-fetched but only written when the payload bytes change. It pulls `event/{gw}/live/` for any gameweek whose bonus is finalised and not already on disk, refreshes current-season vaastav the same way, then rebuilds and validates marts. The GitHub Action then exports `web/data` and commits JSON whose bytes changed.
+`update.py` always writes a gzipped `bootstrap-static` snapshot (the timestamp is the data). Fixtures are re-fetched but only written when the payload bytes change. It pulls `event/{gw}/live/` for any gameweek whose bonus is finalised and not already on disk, and refreshes current-season vaastav the same way. The GitHub Action then rebuilds marts, exports `web/data`, and commits JSON whose bytes changed.
 
 ## Layout
 
