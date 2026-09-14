@@ -4,6 +4,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RAW = REPO_ROOT / "raw"
+DATA = REPO_ROOT / "data"
 MARTS = REPO_ROOT / "marts"
 DB_DIR = REPO_ROOT / "db"
 DB_PATH = DB_DIR / "fpl.duckdb"

@@ -9,10 +9,15 @@ FACT_PLAYER_GW_COLS = [
     "was_home",
     "minutes",
     "starts",
+    "appearances",
+    "appearances_60_plus",
     "goals",
     "assists",
     "clean_sheets",
     "goals_conceded",
+    "own_goals",
+    "penalties_missed",
+    "penalties_saved",
     "saves",
     "yellow",
     "red",
@@ -36,6 +41,20 @@ FACT_PLAYER_GW_COLS = [
     "xp",
 ]
 
+# One row per (season, gw, player_code, fixture_id). Appearances live on the
+# collapsed GW grain; a fixture row is the match itself.
+FACT_PLAYER_FIXTURE_COLS = [
+    "season",
+    "gw",
+    "fixture_id",
+    *(c for c in FACT_PLAYER_GW_COLS if c not in {
+        "season",
+        "gw",
+        "appearances",
+        "appearances_60_plus",
+    }),
+]
+
 # Live API stats key -> fact column
 LIVE_STATS_MAP = {
     "minutes": "minutes",
@@ -44,6 +63,9 @@ LIVE_STATS_MAP = {
     "assists": "assists",
     "clean_sheets": "clean_sheets",
     "goals_conceded": "goals_conceded",
+    "own_goals": "own_goals",
+    "penalties_missed": "penalties_missed",
+    "penalties_saved": "penalties_saved",
     "saves": "saves",
     "yellow_cards": "yellow",
     "red_cards": "red",
@@ -71,6 +93,9 @@ SUM_STAT_COLS = [
     "assists",
     "clean_sheets",
     "goals_conceded",
+    "own_goals",
+    "penalties_missed",
+    "penalties_saved",
     "saves",
     "yellow",
     "red",
@@ -98,10 +123,15 @@ INT_COLS = [
     "opponent",
     "minutes",
     "starts",
+    "appearances",
+    "appearances_60_plus",
     "goals",
     "assists",
     "clean_sheets",
     "goals_conceded",
+    "own_goals",
+    "penalties_missed",
+    "penalties_saved",
     "saves",
     "yellow",
     "red",

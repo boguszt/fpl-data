@@ -52,6 +52,7 @@ Grain: `(season, gw, player_code)`. Double-gameweeks are collapsed (stats summed
 | opponent | Opponent team **code** |
 | was_home | |
 | minutes, starts, goals, assists, … | Live `event/{gw}/live/` stats win for a `(season, gw)` when that file exists; otherwise vaastav. Missing historical columns are NULL, not zero. |
+| appearances, appearances_60_plus | Count of **matches** in this GW with minutes > 0 / ≥ 60, from per-fixture vaastav rows or live `explain`. A double-GW is 2 when the player played both, not 1. Not a GW-row count — `fact_player_gw` has already summed the two fixtures into one row. |
 | value | Price that GW, in £0.1m. See `value_source`. |
 | value_source | `vaastav` = per-GW CSV (price at that GW). `snapshot` = `now_cost` from a bootstrap snapshot taken **at or before** that GW's deadline (the price managers actually faced). NULL = no trustworthy source. **Do not use `value_source='snapshot'` rows for historical price analysis spanning GWs that finished before snapshotting began** — we never attach those. Going forward, a pre-deadline snapshot is the preferred source for the current season; vaastav is the fallback. |
 | xp | Vaastav `xP` only. **Unsafe for modelling** (lookahead from post-GW `ep_this`). Never inferred. NULL when vaastav has no row. |
@@ -66,8 +67,17 @@ Current-season vaastav CSVs mutate. They are re-fetched every `update.py`/`backf
 
 - `expected_goals` / `expected_assists` / `expected_goal_involvements` / `expected_goals_conceded`: from 2022-23. 2022-23 itself is partial (scraper started mid-season).
 - `starts`: recent.
+- `own_goals`, `penalties_missed`, `penalties_saved`: in vaastav `merged_gw` and live stats; now on `fact_player_gw` (NULL when the source season lacks them).
 - `tackles`, `recoveries`, `clearances_blocks_interceptions`: present 2016-17–2018-19, then absent, then back from 2025-26.
 - `defensive_contribution`: from 2025-26.
+
+## `fact_player_fixture`
+
+Grain: `(season, gw, player_code, fixture_id)`. One row per **match**, not per gameweek.
+
+Built from distinct vaastav `merged_gw` fixture rows (before DGW collapse) and, when a live file exists, one row per `explain[]` block. A double-GW is two rows with the same `gw` and different `fixture_id`. Opponent / `was_home` come from that fixture. Stats that live `explain` does not list are NULL on a DGW split — do not copy the GW total onto both rows.
+
+Blank gameweeks (the player's club had no fixture) are **not** stored here. `web/data/matchlogs_{season}.json` synthesises them from `fact_fixture` with `blank: true` and null minutes / points / metrics.
 
 ## `fact_fixture`
 
@@ -94,6 +104,65 @@ Grain: `(player_code, season)`.
 From `element-summary` `history_past` only.
 
 **Coverage bias:** backfill requests `element-summary` only for players in the *current* `bootstrap-static`. This table is the current FPL pool's past-season totals, not everyone who has ever played. Retired and dropped players are absent. GW-level history for all players is in `fact_player_gw` via vaastav.
+
+## Derived metrics
+
+Rebuilt from `fact_player_gw` / `fact_fixture` every `make marts`. The static player table ranks client-side against the current filtered set.
+
+Each counting stat has `*_total` and `*_p90` (`total / minutes * 90`). Per-90 rates also have an empirical-Bayes shrink `{metric}_adj90` toward the minutes-weighted `(season, element_type)` mean, with prior strength `k` nineties stored in `dim_shrinkage`. Share metrics also have `*_share` and are **not** shrunk.
+
+### `fact_team_gw`
+
+Grain: `(season, gw, team_code)`.
+
+Sums of every `fact_player_gw` row with that GW `team_code`: `xg`, `xa`, `xgi`, `xgc`, `goals`, `assists`, `minutes`, `tackles`, `recoveries`, `clearances_blocks_interceptions`, `defensive_contribution`, `bps`, `saves`.
+
+`matches_played`: distinct played fixtures for that team in that GW (1 normally, 2 in a DGW). Taken from `fact_fixture` rows with a `result`. If fixture rows are missing but the team recorded minutes, falls back to 1.
+
+Requires `fact_player_gw.team_code`. That column is populated from 2020-21; 2016-17–2019-20 rows currently have NULL `team_code`, so this mart (and spell shares) start in 2020-21.
+
+### `fact_player_season_metrics`
+
+Two grains in one table, distinguished by `grain` and `team_code`:
+
+| grain | key | `team_code` | `spell_count` |
+| --- | --- | --- | --- |
+| `spell` | `(season, player_code, team_code)` | club for that spell | number of clubs that season |
+| `season` | `(season, player_code)` | NULL | same |
+
+A mid-season transfer gets two spell rows plus one season row. Spell totals must sum to the season totals. Shares are **not** season-level player/team over all 38: they are `SUM(player stat in GWs at club X) / SUM(team X stat in those same GWs)`, using registration GWs (including 0-minute benches). The season-grain share is a **minutes-weighted blend** of the spell shares.
+
+`element_type` is that season's position from `players_raw` / current bootstrap, not `dim_player.current_element_type`.
+
+Goalkeeping metrics (`saves`, `penalties_saved`) have adj90 only for `element_type = 1`; outfield rows are NULL.
+
+Direction: `data/metric_direction.csv` (`dim_metric` in the marts). `direction = lower` means fewer is better (`goals_conceded`, `xgc`, `yellow_cards`, `red_cards`, `own_goals`, `penalties_missed`). The player table uses this for rank (1 = good).
+
+### `fact_player_season_availability`
+
+Same spell / season grain as the metrics table.
+
+`appearances` = matches with minutes > 0 (not distinct gameweeks). `appearances_60_plus` = matches of at least 60 minutes. A double gameweek of 90 and 75 is two appearances and two 60+ matches. `minutes_per_appearance` = minutes / appearances.
+
+`team_minutes_available` = `90 * SUM(matches_played)` of that club over GWs the player was registered there. `minutes_share` = minutes / team_minutes_available.
+
+Set-piece orders are from `dim_setpieces` (latest bootstrap `as_of`). They are **not** historical — a 2019 spell still shows today's penalty order.
+
+### `dim_metric`
+
+Copy of `data/metric_direction.csv`: `metric_name`, `direction` (`higher` / `lower`), `display_name`, `group` (Attacking / Defensive / Goalkeeping / FPL), `applies_to_positions`. The player table is driven entirely from this table.
+
+### `dim_shrinkage`
+
+Grain: `(season, element_type, metric)`.
+
+`k` is prior strength in nineties for `{metric}_adj90`. Fitted once per `(metric, element_type)` from a split-half correlation of GW-level rates (`method = split_half`): split each player-season's gameweeks at random, correlate the two half-rates, then `k = n_half * (1 - r) / r` — the sample size at which signal equals noise. If fewer than 20 usable pairs or `r` is not in `(0, 1]`, `k = 10` and `method = fallback`. The same `k` is stored on every season row. Pool mean for the shrink is still `(season, element_type)`.
+
+### `dim_region`
+
+Copy of `data/region_lookup.csv`: `region_id`, `country_name`, `iso_alpha2`, `iso_alpha3`.
+
+FPL `region` is a bare integer on bootstrap / `dim_player`. Names come from FPL `/api/regions/` (the dictionary for those ids), ISO 3166-1 used to fill a blank name (Russia, id 178) and to confirm codes. Home nations use FIFA-style codes (`ENG`/`SCO`/`WAL`/`NIR`), not ISO-3166. Ids that cannot be named stay NULL rather than guessed. Join `dim_player.region = dim_region.region_id`.
 
 ## Live join path
 

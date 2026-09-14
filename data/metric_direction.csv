@@ -1,0 +1,22 @@
+metric_name,direction,display_name,group,applies_to_positions
+xg,higher,Expected goals,Attacking,"1,2,3,4"
+xa,higher,Expected assists,Attacking,"1,2,3,4"
+xgi,higher,Expected goal involvements,Attacking,"1,2,3,4"
+goals,higher,Goals,Attacking,"1,2,3,4"
+assists,higher,Assists,Attacking,"1,2,3,4"
+xgc,lower,Expected goals conceded,Defensive,"1,2,3,4"
+goals_conceded,lower,Goals conceded,Defensive,"1,2,3,4"
+tackles,higher,Tackles,Defensive,"1,2,3,4"
+recoveries,higher,Recoveries,Defensive,"1,2,3,4"
+clearances_blocks_interceptions,higher,Clearances / blocks / interceptions,Defensive,"1,2,3,4"
+defensive_contribution,higher,Defensive contribution,Defensive,"1,2,3,4"
+clean_sheets,higher,Clean sheets,Defensive,"1,2,3,4"
+saves,higher,Saves,Goalkeeping,1
+penalties_saved,higher,Penalties saved,Goalkeeping,1
+total_points,higher,Total points,FPL,"1,2,3,4"
+bps,higher,Bonus point system,FPL,"1,2,3,4"
+bonus,higher,Bonus,FPL,"1,2,3,4"
+yellow_cards,lower,Yellow cards,FPL,"1,2,3,4"
+red_cards,lower,Red cards,FPL,"1,2,3,4"
+own_goals,lower,Own goals,FPL,"1,2,3,4"
+penalties_missed,lower,Penalties missed,FPL,"1,2,3,4"

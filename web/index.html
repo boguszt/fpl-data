@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Player table — fpl-data</title>
+<style>
+:root{
+  --paper:#fff; --obs:#fafbfc; --der:#f0f6f8; --fpl:#f9f6fc; --fpl-der:#f3edfa;
+  --ink:#15181d; --ink-2:#5d6675; --ink-3:#97a0ad;
+  --rule:#e6e9ee; --rule-2:#ccd2db; --rule-3:#8e97a4;
+  --g-att:#12705a; --g-att-bg:#e3f2ed; --g-att-br:#9dc9bb;
+  --g-def:#1c5486; --g-def-bg:#e3edf7; --g-def-br:#a3c1de;
+  --g-gk:#8a5416;  --g-gk-bg:#f8eddc;  --g-gk-br:#dcbe92;
+  --g-fpl:#68409c; --g-fpl-bg:#efe8f8; --g-fpl-br:#c0a8dd;
+  --g-dis:#9c3f3f; --g-dis-bg:#f7e7e7; --g-dis-br:#dcaeae;
+  --warn:#8a5a12; --warn-soft:#fdf4e3;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --num:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --row:31px; --h1:23px; --h2:27px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);
+  font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;overflow:hidden}
+button,select,input{font:inherit;color:inherit}
+
+.masthead{display:flex;align-items:baseline;gap:14px;padding:10px 16px 9px;
+  border-bottom:1px solid var(--rule-2)}
+.masthead h1{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em}
+.masthead .sub{color:var(--ink-3);font-size:12px}
+.masthead .spacer{flex:1}
+.freshness{font-size:11.5px;color:var(--ink-3);cursor:pointer;background:none;border:0;
+  padding:2px 4px;border-radius:3px}
+.freshness:hover{color:var(--ink-2);background:var(--obs)}
+.freshness.warn{color:var(--warn)}
+.banner{padding:7px 16px;font-size:12px;background:var(--warn-soft);color:var(--warn);
+  border-bottom:1px solid #f0e2c4}
+.banner[hidden]{display:none}
+
+.controls{border-bottom:1px solid var(--rule-2)}
+.filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;padding:9px 16px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--ink-3)}
+.field select{height:26px;padding:0 6px;border:1px solid var(--rule-2);border-radius:3px;
+  background:var(--paper);min-width:108px;font-size:12.5px}
+.txtin{height:26px;padding:0 8px;border:1px solid var(--rule-2);border-radius:3px;
+  background:var(--paper);width:150px;font-size:12.5px;outline:none}
+.txtin:focus{border-color:var(--ink-3)}
+.range2{display:flex;align-items:center;gap:5px}
+.range2 input{width:52px;height:26px;padding:0 6px;border:1px solid var(--rule-2);
+  border-radius:3px;background:var(--paper);font-size:12.5px;font-family:var(--num);outline:none}
+.range2 span{color:var(--ink-3);font-size:12px}
+
+/* average row */
+tbody tr.avg td{position:sticky;top:calc(var(--h1) + var(--h2));z-index:2;
+  background:#eef1f4;border-bottom:1px solid var(--rule-3);color:var(--ink-2);
+  font-weight:500;height:28px}
+tbody tr.avg td.name{z-index:4;background:#eef1f4;font-family:var(--ui)}
+tbody tr.avg:hover td{filter:none}
+
+/* pinned rows */
+tbody tr.pinned td{background:#fdf8e8}
+tbody tr.pinned td.name{background:#fdf8e8}
+tbody tr.pinned.last td{border-bottom:1px solid var(--rule-3)}
+.pin{border:0;background:none;cursor:pointer;color:var(--ink-3);padding:0 4px 0 0;
+  font-size:12px;line-height:1;opacity:0}
+tbody tr:hover .pin,.pin.on{opacity:1}
+.pin.on{color:#b8860b}
+.pin:hover{color:var(--ink)}
+.field select[multiple]{height:auto;padding:3px 4px;min-width:126px}
+
+/* position toggles */
+.posrow{display:flex;gap:4px}
+.pos-b{height:26px;padding:0 10px;border:1px solid var(--rule-2);background:var(--paper);
+  border-radius:3px;cursor:pointer;font-size:12px;color:var(--ink-3);font-family:var(--num)}
+.pos-b:hover{border-color:var(--rule-3);color:var(--ink)}
+.pos-b[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+
+/* checkbox dropdown */
+.ms{position:relative}
+.ms-btn{height:26px;padding:0 8px;border:1px solid var(--rule-2);background:var(--paper);
+  border-radius:3px;cursor:pointer;font-size:12.5px;color:var(--ink-2);display:flex;
+  align-items:center;gap:6px;min-width:120px;justify-content:space-between}
+.ms-btn:hover{border-color:var(--rule-3);color:var(--ink)}
+.ms-btn.active{border-color:var(--ink-3);color:var(--ink)}
+.ms-btn .cnt{background:var(--ink);color:#fff;border-radius:9px;padding:0 6px;font-size:10.5px;
+  line-height:15px;font-family:var(--num)}
+.ms-btn .car{color:var(--ink-3);font-size:10px}
+.ms-panel{position:absolute;top:29px;left:0;z-index:30;width:246px;background:var(--paper);
+  border:1px solid var(--rule-2);border-radius:4px;box-shadow:0 6px 22px rgba(20,24,30,.13);
+  display:none;overflow:hidden}
+.ms-panel.on{display:block}
+.ms-search{width:100%;height:28px;border:0;border-bottom:1px solid var(--rule);padding:0 9px;
+  font-size:12.5px;outline:none}
+.ms-list{max-height:236px;overflow:auto;padding:3px 0}
+.ms-opt{display:flex;align-items:center;gap:7px;padding:3px 9px;cursor:pointer;font-size:12.5px}
+.ms-opt:hover{background:var(--obs)}
+.ms-opt input{margin:0;accent-color:var(--ink);width:13px;height:13px}
+.ms-opt .lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-foot{display:flex;gap:6px;padding:6px 8px;border-top:1px solid var(--rule);background:var(--obs)}
+.ms-foot button{flex:1;height:24px;border:1px solid var(--rule-2);background:var(--paper);
+  border-radius:3px;cursor:pointer;font-size:11.5px;color:var(--ink-2)}
+.ms-foot button:hover{border-color:var(--rule-3);color:var(--ink)}
+.ms-none{padding:9px;color:var(--ink-3);font-size:12px}
+.range{display:flex;align-items:center;gap:5px}
+.range span{color:var(--ink-3);font-size:12px}
+.minutes{display:flex;align-items:center;gap:8px}
+.minutes input[type=range]{width:112px;accent-color:var(--g-att)}
+.minutes .val{font-family:var(--num);font-size:12px;min-width:34px}
+.clear{height:26px;padding:0 9px;border:1px solid var(--rule-2);background:var(--paper);
+  border-radius:3px;cursor:pointer;font-size:12px;color:var(--ink-2)}
+.clear:hover{border-color:var(--rule-3);color:var(--ink)}
+
+/* tab strip */
+.tabs{display:flex;align-items:center;gap:2px;padding:0 16px;border-top:1px solid var(--rule)}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:7px 11px;
+  cursor:pointer;color:var(--ink-3);font-size:12.5px;font-weight:500;display:flex;
+  align-items:center;gap:6px}
+.tab:hover{color:var(--ink-2)}
+.tab .dot{width:7px;height:7px;border-radius:2px;background:currentColor;opacity:.55}
+.tab[aria-selected=true]{color:var(--ink)}
+.tab[aria-selected=true] .dot{opacity:1}
+.tab.t-att[aria-selected=true]{border-bottom-color:var(--g-att);color:var(--g-att)}
+.tab.t-def[aria-selected=true]{border-bottom-color:var(--g-def);color:var(--g-def)}
+.tab.t-gk[aria-selected=true]{border-bottom-color:var(--g-gk);color:var(--g-gk)}
+.tab.t-fpl[aria-selected=true]{border-bottom-color:var(--g-fpl);color:var(--g-fpl)}
+.tab.t-dis[aria-selected=true]{border-bottom-color:var(--g-dis);color:var(--g-dis)}
+.tab.t-all[aria-selected=true]{border-bottom-color:var(--ink)}
+.tab.t-all .dot{display:none}
+.tabs .spacer{flex:1}
+
+/* frame switcher */
+.frames{display:flex;align-items:center;gap:8px;padding:8px 16px 9px}
+.frames .lbl{font-size:11px;color:var(--ink-3)}
+.seg{display:inline-flex;border:1px solid var(--rule-2);border-radius:4px;overflow:hidden}
+.seg button{background:var(--paper);border:0;border-right:1px solid var(--rule-2);
+  padding:3px 10px;cursor:pointer;font-size:12px;color:var(--ink-2)}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--obs);color:var(--ink)}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+.frames .chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{border:1px solid var(--rule-2);background:var(--paper);color:var(--ink-3);padding:2px 9px;
+  border-radius:11px;cursor:pointer;font-size:12px;white-space:nowrap}
+.chip:hover{border-color:var(--rule-3);color:var(--ink)}
+.chip[aria-pressed=true]{color:var(--ink-2)}
+.c-att[aria-pressed=true]{background:var(--g-att-bg);border-color:var(--g-att-br);color:var(--g-att);font-weight:500}
+.c-def[aria-pressed=true]{background:var(--g-def-bg);border-color:var(--g-def-br);color:var(--g-def);font-weight:500}
+.c-gk[aria-pressed=true]{background:var(--g-gk-bg);border-color:var(--g-gk-br);color:var(--g-gk);font-weight:500}
+.c-fpl[aria-pressed=true]{background:var(--g-fpl-bg);border-color:var(--g-fpl-br);color:var(--g-fpl);font-weight:500}
+.c-dis[aria-pressed=true]{background:var(--g-dis-bg);border-color:var(--g-dis-br);color:var(--g-dis);font-weight:500}
+.chip.toggle[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.frames .spacer{flex:1}
+
+.tablewrap{flex:1;overflow:auto;position:relative}
+table{border-collapse:separate;border-spacing:0;font-size:12.5px}
+thead th{position:sticky;background:var(--paper);z-index:3;font-weight:500;text-align:right;
+  white-space:nowrap;padding:0 9px;border-bottom:1px solid var(--rule-2)}
+thead tr.blocks th{top:0;height:var(--h1);font-size:11px;font-weight:600;text-align:left;
+  border-bottom:1px solid var(--rule);color:var(--ink-2)}
+thead tr.labels th{top:var(--h1);height:var(--h2);color:var(--ink-2);cursor:help;
+  border-bottom:1px solid var(--rule-2)}
+thead th.obs{background:var(--obs)} thead th.der{background:var(--der)}
+thead th.obs.fplcol{background:var(--fpl)} thead th.der.fplcol{background:var(--fpl-der)}
+thead tr.labels th:hover{color:var(--ink)}
+thead tr.labels th.sorted{font-weight:600}
+thead tr.labels th.sorted.k-att{box-shadow:inset 0 -2px 0 var(--g-att);color:var(--g-att)}
+thead tr.labels th.sorted.k-def{box-shadow:inset 0 -2px 0 var(--g-def);color:var(--g-def)}
+thead tr.labels th.sorted.k-gk{box-shadow:inset 0 -2px 0 var(--g-gk);color:var(--g-gk)}
+thead tr.labels th.sorted.k-fpl{box-shadow:inset 0 -2px 0 var(--g-fpl);color:var(--g-fpl)}
+thead tr.labels th.sorted.k-dis{box-shadow:inset 0 -2px 0 var(--g-dis);color:var(--g-dis)}
+thead tr.labels th.sorted.k-base{box-shadow:inset 0 -2px 0 var(--ink);color:var(--ink)}
+th.name,td.name{position:sticky;left:0;z-index:4;text-align:left;border-right:1px solid var(--rule-2)}
+thead th.name{z-index:5;background:var(--paper)}
+th.gap,td.gap{border-left:1px solid var(--rule-3)}
+th.gapsrc,td.gapsrc{border-left:1px dashed var(--g-fpl-br)}
+tbody td{height:var(--row);padding:0 9px;white-space:nowrap;border-bottom:1px solid var(--rule);
+  text-align:right;font-family:var(--num);font-variant-numeric:tabular-nums}
+tbody td.name,tbody td.txt{font-family:var(--ui);text-align:left}
+tbody td.name{background:var(--paper);font-weight:500}
+tbody td.obs{background:var(--obs)} tbody td.der{background:var(--der)}
+tbody td.obs.fplcol{background:var(--fpl)} tbody td.der.fplcol{background:var(--fpl-der)}
+tbody tr{cursor:pointer}
+tbody tr:hover td{filter:brightness(.972)}
+tbody tr.sel td{filter:brightness(.94)}
+td.nil{color:var(--ink-3)}
+td.rank .den{color:var(--ink-3);font-size:11px}
+td.rank.top{font-weight:600}
+td.rank.top.k-att{color:var(--g-att)} td.rank.top.k-def{color:var(--g-def)}
+td.rank.top.k-gk{color:var(--g-gk)} td.rank.top.k-fpl{color:var(--g-fpl)}
+td.rank.top.k-dis{color:var(--g-dis)}
+td.club{color:var(--ink-2)}
+.cbar{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-2px;
+  margin-right:7px;background:linear-gradient(135deg,var(--c1) 0 50%,var(--c2) 50% 100%);
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.28)}
+.cbar.lg{width:15px;height:15px;vertical-align:-3px}
+.moved{color:var(--ink-3);font-size:10.5px;margin-left:4px}
+
+.foot{display:flex;align-items:center;gap:12px;padding:7px 16px;border-top:1px solid var(--rule-2);
+  font-size:12px;color:var(--ink-2)}
+.foot .spacer{flex:1}
+.foot .hint{color:var(--ink-3);font-size:11.5px}
+.pager{display:flex;align-items:center;gap:6px}
+.pager button{width:24px;height:24px;border:1px solid var(--rule-2);background:var(--paper);
+  border-radius:3px;cursor:pointer;color:var(--ink-2);line-height:1}
+.pager button:hover:not(:disabled){border-color:var(--rule-3);color:var(--ink)}
+.pager button:disabled{opacity:.35;cursor:default}
+.pos{font-family:var(--num);min-width:78px;text-align:center}
+.empty{padding:40px 16px;color:var(--ink-2)}
+
+/* drawer */
+#backdrop{position:fixed;inset:0;background:rgba(20,24,30,.18);z-index:40;opacity:0;
+  pointer-events:none;transition:opacity .14s}
+#backdrop.on{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:720px;max-width:94vw;background:var(--paper);
+  border-left:1px solid var(--rule-2);box-shadow:-6px 0 26px rgba(20,24,30,.10);z-index:41;
+  transform:translateX(100%);transition:transform .16s ease;display:flex;flex-direction:column}
+#drawer.on{transform:none}
+.dhead{padding:14px 18px 11px;border-bottom:1px solid var(--rule-2);
+  display:flex;gap:14px;align-items:flex-start}
+.dtext{flex:1;min-width:0}
+.dfig{flex:0 0 auto}
+.halo{position:relative;width:66px;height:66px;border-radius:50%;overflow:hidden;
+  background:var(--obs);box-shadow:inset 0 0 0 1px rgba(0,0,0,.10)}
+.halo .flag{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:.62;filter:saturate(.82)}
+.halo .avatar{position:absolute;left:50%;bottom:-5%;width:76%;transform:translateX(-50%);
+  /* Stacked drop-shadows build a solid rim: three tight white passes make an
+     opaque inner outline, then a dark pass sits outside it. Whichever the flag
+     is, one of the two separates the figure from it. */
+  filter:
+    drop-shadow(0 0 var(--ol-w,.9px) var(--ol-1,#fff))
+    drop-shadow(0 0 var(--ol-w,.9px) var(--ol-1,#fff))
+    drop-shadow(0 0 var(--ol-w,.9px) var(--ol-1,#fff))
+    drop-shadow(0 0 var(--ol-w2,1.7px) var(--ol-2,rgba(14,19,26,.8)))}
+.halo .noav{position:absolute;inset:0}
+.dhead h2{margin:0;font-size:17px;font-weight:600;letter-spacing:-.015em}
+.dalias{font-weight:400;font-size:12px;color:var(--ink-3);margin-left:8px}
+.dhead .meta{margin-top:3px;color:var(--ink-2);font-size:12.5px}
+.dclose{position:absolute;top:12px;right:14px;width:26px;height:26px;border:1px solid var(--rule-2);
+  background:var(--paper);border-radius:3px;cursor:pointer;color:var(--ink-2);line-height:1}
+.dclose:hover{border-color:var(--rule-3);color:var(--ink)}
+.dbody{flex:1;overflow:auto;padding:0 18px 22px}
+.dsec{margin-top:16px}
+.dsec h3{margin:0 0 6px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.dsec h3::before{content:"";width:7px;height:7px;border-radius:2px;background:currentColor}
+.dsec.s-base h3::before{display:none}
+.dsec.s-base h3{color:var(--ink-3)}
+.dsec.s-att h3{color:var(--g-att)} .dsec.s-def h3{color:var(--g-def)}
+.dsec.s-gk h3{color:var(--g-gk)}  .dsec.s-fpl h3{color:var(--g-fpl)}
+.dsec.s-dis h3{color:var(--g-dis)}
+.dtable{width:100%;border-collapse:collapse;font-size:12.5px}
+.dtable th{text-align:right;font-weight:500;color:var(--ink-3);font-size:11px;
+  padding:2px 7px 5px;border-bottom:1px solid var(--rule)}
+.dtable th:first-child{text-align:left}
+.dtable td{padding:4px 7px;border-bottom:1px solid var(--rule);text-align:right;
+  font-family:var(--num);font-variant-numeric:tabular-nums}
+.dtable td:first-child{text-align:left;font-family:var(--ui);color:var(--ink-2)}
+.dtable tr:last-child td{border-bottom:0}
+.dtable .nil{color:var(--ink-3)}
+.dtable.log th:nth-child(2),.dtable.log td:nth-child(2){text-align:left}
+.dtable.log td{padding:3px 5px}
+.dtable.log th{padding:2px 5px 5px}
+.dtable.log th:first-child,.dtable.log td:first-child{padding-left:2px}
+.ldrop{color:var(--ink-3);font-size:10.5px;margin:4px 0 2px;font-style:italic}
+.dtable.log tr.blank td{color:var(--ink-3)}
+.dtable.log tr.nofix-row td{color:var(--ink-3);background:repeating-linear-gradient(
+  45deg,transparent,transparent 5px,rgba(150,160,175,.07) 5px,rgba(150,160,175,.07) 10px)}
+.dtable.log .nofix{font-style:italic;color:var(--ink-3)}
+.dtable.log .ha{color:var(--ink-3);font-size:10.5px;margin-left:2px}
+.dtable.log .sc{color:var(--ink-3);font-size:11px}
+.lsec{border-bottom:1px solid var(--rule)}
+.lsec[open]{padding-bottom:8px}
+.lseason{margin:0;padding:7px 2px;font-size:11px;color:var(--ink-3);font-weight:600;
+  display:flex;align-items:center;gap:9px;cursor:pointer;list-style:none;user-select:none}
+.lseason::-webkit-details-marker{display:none}
+.lseason:hover{color:var(--ink-2)}
+.lcar{display:inline-block;transition:transform .12s;font-size:9px;color:var(--ink-3)}
+.lsec[open] .lcar{transform:rotate(90deg)}
+.lsum{margin-left:auto;font-weight:400;font-family:var(--num);font-size:11px;color:var(--ink-3)}
+.dc-hit-i{color:#12705a;font-weight:600}
+.lclub{font-weight:500;color:var(--ink-2);font-size:12px;display:flex;align-items:center}
+.dtable.log td.dc-hit{background:#dff0e8;color:#0e5d4a;font-weight:600}
+.dtable.log td.dc-over{background:#bfe3d3;color:#0b4a3b;font-weight:700}
+.dtable.log td.dc-near{background:#fbf0d9;color:#8a5a12}
+.lmsg{color:var(--ink-3);font-size:12px;padding:4px 0 2px}
+.dpairs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 14px}
+.dpair{border-bottom:1px solid var(--rule);padding-bottom:5px}
+.dpair .k{font-size:11px;color:var(--ink-3)}
+.dpair .v{font-family:var(--num);font-variant-numeric:tabular-nums;font-size:14px}
+
+.radar{width:100%;max-width:340px;display:block;margin:2px auto 0}
+.radar .ring{fill:none;stroke:var(--rule);stroke-width:1}
+.radar .ring.outer{stroke:var(--rule-2)}
+.radar .spoke{stroke:var(--rule);stroke-width:1}
+.radar .area{fill:var(--rc);fill-opacity:.17;stroke:var(--rc);stroke-width:1.8;
+  stroke-linejoin:round}
+.radar .dot{fill:var(--rc)}
+.radar .rlab{font-family:var(--ui);font-size:9.5px;fill:var(--ink-2)}
+.radar .rval{font-family:var(--num);font-size:10.5px;fill:var(--ink-2);font-weight:600}
+.radar .rraw{font-weight:400;fill:var(--ink-3);font-size:9px}
+.rnote b{font-weight:600;color:var(--ink-2)}
+.dsum{font-size:11.5px;font-weight:600;cursor:pointer;list-style:none;user-select:none;
+  padding:7px 2px;display:flex;align-items:center;gap:6px}
+.dsum::-webkit-details-marker{display:none}
+.dsum::before{content:"\25B8";font-size:9px;color:var(--ink-3);transition:transform .12s;
+  display:inline-block}
+details[open]>.dsum::before{transform:rotate(90deg)}
+details.dsec{border-bottom:1px solid var(--rule);margin-top:0}
+details.dsec[open]{padding-bottom:9px}
+.dsec.s-att .dsum{color:var(--g-att)} .dsec.s-def .dsum{color:var(--g-def)}
+.dsec.s-gk .dsum{color:var(--g-gk)}   .dsec.s-fpl .dsum{color:var(--g-fpl)}
+.dsec.s-dis .dsum{color:var(--g-dis)}
+.rtoggle{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:14px}
+.rseg button{padding:3px 11px}
+.rhelp{width:15px;height:15px;border-radius:50%;border:1px solid var(--rule-2);
+  background:var(--paper);color:var(--ink-3);font-size:10px;line-height:1;cursor:help;
+  margin-left:7px;padding:0;font-family:var(--ui)}
+.rhelp:hover{border-color:var(--ink-3);color:var(--ink)}
+.dsec h3{align-items:center}
+/* compare */
+.dcmp{margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.clbl{font-size:11px;color:var(--ink-3)}
+.clbl.dim{font-style:italic}
+.cmpchip{font-size:11.5px;padding:1px 8px}
+.cmpchip[aria-pressed=true]{background:#41474f;border-color:#41474f;color:#fff;font-weight:500}
+.radar .area.cmp{fill:#41474f;fill-opacity:.07;stroke:#41474f;stroke-width:1.5;
+  stroke-dasharray:4 3}
+.rleg{display:flex;gap:16px;justify-content:center;font-size:11.5px;color:var(--ink-2);
+  margin:2px 0 -4px}
+.rleg .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;
+  background:var(--rc);vertical-align:-1px}
+.rleg .sw.cmp{background:transparent;border:1.5px dashed #41474f}
+.dtable.cmp{margin-top:10px}
+.dtable.cmp th{font-size:10.5px}
+.dtable.cmp td{padding:3px 6px}
+.rraw2{display:block;font-size:9.5px;color:var(--ink-3);font-weight:400}
+.dtable.cmp td.up{color:#12705a;font-weight:600}
+.dtable.cmp td.down{color:#9c3f3f;font-weight:600}
+.dtable.cmp td.nil{color:var(--ink-3)}
+.rnote{color:var(--ink-3);font-size:11px;line-height:1.45;margin-top:4px}
+
+#tip{position:fixed;z-index:60;max-width:312px;background:#1b1f26;color:#eef1f5;padding:8px 10px;
+  border-radius:4px;font-size:12px;line-height:1.5;pointer-events:none;opacity:0;
+  transition:opacity .09s;box-shadow:0 3px 14px rgba(0,0,0,.22)}
+#tip.on{opacity:1}
+#tip b{display:block;margin-bottom:3px}
+#tip .src{display:block;margin-top:6px;padding-top:5px;border-top:1px solid #333a44;
+  color:#98a3b4;font-size:11px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+:focus-visible{outline:2px solid var(--g-def);outline-offset:1px}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <h1>Player table</h1><span class="sub" id="scope"></span>
+  <span class="spacer"></span>
+  <button class="freshness" id="freshness" title="Reload"></button>
+</div>
+<div class="banner" id="banner" hidden></div>
+
+<div class="controls">
+  <div class="filters">
+    <div class="field"><label>Search</label>
+      <input type="text" id="fQ" class="txtin" placeholder="Player name"></div>
+    <div class="field"><label>Seasons</label><div id="fSeason"></div></div>
+    <div class="field"><label>Position</label><div class="posrow" id="fPos"></div></div>
+    <div class="field"><label>Club</label><div id="fClub"></div></div>
+    <div class="field"><label>Nationality</label><div id="fNat"></div></div>
+    <div class="field"><label>Age</label>
+      <div class="range2"><input type="number" id="fAgeMin" min="15" max="45" placeholder="any">
+      <span>to</span><input type="number" id="fAgeMax" min="15" max="45" placeholder="any"></div></div>
+    <div class="field"><label>Minimum minutes</label>
+      <div class="minutes"><input type="range" id="fMin" min="0" max="3420" step="90" value="600">
+      <span class="val" id="fMinVal">600</span></div></div>
+    <div class="field"><label>Min minutes / app</label>
+      <div class="minutes"><input type="range" id="fMpa" min="0" max="90" step="5" value="0">
+      <span class="val" id="fMpaVal">0</span></div></div>
+    <button class="clear" id="clearBtn">Clear filters</button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="frames">
+    <span class="lbl">Frame</span>
+    <span class="seg" id="frameSeg"></span>
+    <span class="lbl" style="margin-left:6px">Metrics</span>
+    <span class="chips" id="metricChips"></span>
+    <span class="spacer"></span>
+    <button class="chip toggle" id="rankChip">Rank</button>
+  </div>
+</div>
+
+<div class="tablewrap" id="tablewrap">
+  <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+  <div class="empty" id="empty" hidden></div>
+</div>
+
+<div class="foot">
+  <span id="count"></span>
+  <span class="hint">click a row for the full profile</span>
+  <span class="spacer"></span>
+  <div class="pager"><button id="prev">&lsaquo;</button><span class="pos" id="pagepos"></span><button id="next">&rsaquo;</button></div>
+</div>
+
+<div id="backdrop"></div>
+<aside id="drawer" aria-hidden="true">
+  <div class="dhead">
+    <div class="dfig" id="dFig"></div>
+    <div class="dtext"><h2 id="dName"></h2><div class="meta" id="dMeta"></div>
+      <div class="dcmp" id="dCmp"></div></div>
+    <button class="dclose" id="dClose" title="Close (Esc)">&times;</button></div>
+  <div class="dbody" id="dBody"></div>
+</aside>
+<div id="tip"></div>
+
+<script type="module">
+const DATA='./data/';
+const PAGE=50;
+/* Rates from tiny samples are noise. Set to 0 to always show them. */
+const FLOOR=0;
+
+let METRICS=[
+ {key:'goals',label:'Goals',group:'Attacking',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:12,dir:1,share:true,
+  desc:'Goals scored, penalties included.'},
+ {key:'assists',label:'Assists',group:'Attacking',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:14,dir:1,share:true,
+  desc:'The final pass before a goal. FPL\u2019s definition is looser than Opta\u2019s — it also credits winning a penalty.'},
+ {key:'xg',label:'xG',group:'Attacking',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:8,dir:1,share:true,
+  desc:'Expected goals. The scoring probability of every shot taken, added up. Measures the quality and volume of chances a player gets, independent of whether they went in — which is why it predicts future scoring better than goals do.'},
+ {key:'xa',label:'xA',group:'Attacking',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:10,dir:1,share:true,
+  desc:'Expected assists. The scoring probability of the shots a player set up. Credits creating a good chance even when the shooter misses.'},
+ {key:'xgi',label:'xGI',group:'Attacking',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:8,dir:1,share:true,
+  desc:'Expected goal involvement — xG plus xA. The broadest single measure of attacking contribution.'},
+ {key:'tackles',label:'Tackles',group:'Defensive',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:5,dir:1,share:true,
+  desc:'Successful tackles. High for players who defend in open space, low for those whose team rarely loses the ball.'},
+ {key:'recoveries',label:'Recoveries',group:'Defensive',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:4,dir:1,share:true,
+  desc:'Loose balls won back. The highest-volume defensive stat here, so it settles down fastest on a small sample.'},
+ {key:'cbi',label:'CBI',group:'Defensive',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:5,dir:1,share:true,
+  desc:'Clearances, blocks and interceptions combined. Inflated for defenders in teams that spend long spells under pressure — read it next to the team share.'},
+ {key:'defcon',label:'Def. contribution',group:'Defensive',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:4,dir:1,share:true,
+  desc:'FPL\u2019s composite of tackles, interceptions, clearances, blocks and recoveries, used to award defensive points. Built from the other columns in this group, so it moves with them rather than adding anything new.'},
+ {key:'saves',label:'Saves',group:'Goalkeeping',src:'match',pos:['GK'],fmt:'2dp',k:5,dir:1,
+  desc:'Shots saved. Counter-intuitively high for keepers in poor teams, who simply face more shots.'},
+ {key:'gc',label:'Conceded',group:'Goalkeeping',src:'match',pos:['GK'],fmt:'2dp',k:6,dir:-1,
+  desc:'Goals conceded. Lower is better, so ranking treats a small number as a good one.'},
+ {key:'xgc',label:'xGC',group:'Goalkeeping',src:'match',pos:['GK','DEF','MID','FWD'],fmt:'2dp',k:5,dir:-1,
+  desc:'Expected goals conceded by the team while this player was on the pitch. A read on the defence around them rather than on the player. Lower is better.'},
+ {key:'cs',label:'Clean sheets',group:'Goalkeeping',src:'match',pos:['GK','DEF'],fmt:'2dp',k:8,dir:1,
+  desc:'Matches where the team conceded nothing while this player was on. Almost entirely a team-quality signal.'},
+ {key:'pensaved',label:'Pens saved',group:'Goalkeeping',src:'match',pos:['GK'],fmt:'2dp',k:20,dir:1,
+  desc:'Penalties saved. Far too rare to say anything about skill over one season — shown for completeness and shrunk hard toward the average.'},
+ {key:'yellow',label:'Yellow cards',group:'Discipline',src:'match',pos:['GK','DEF','MID','FWD'],fmt:'2dp',k:8,dir:-1,
+  desc:'Yellow cards. Costs 1 FPL point each. Lower is better, so ranking treats a small number as good.'},
+ {key:'red',label:'Red cards',group:'Discipline',src:'match',pos:['GK','DEF','MID','FWD'],fmt:'2dp',k:20,dir:-1,
+  desc:'Red cards. Costs 3 FPL points, and the player also forfeits any points from that match onward. Rare enough that one card dominates a season rate — shrunk hard.'},
+ {key:'og',label:'Own goals',group:'Discipline',src:'match',pos:['GK','DEF','MID','FWD'],fmt:'2dp',k:20,dir:-1,
+  desc:'Own goals. Costs 2 FPL points. Essentially random at the individual level.'},
+ {key:'penmissed',label:'Pens missed',group:'Discipline',src:'match',pos:['DEF','MID','FWD'],fmt:'2dp',k:20,dir:-1,
+  desc:'Penalties missed. Costs 2 FPL points. Read alongside the penalty-taking order rather than as a skill signal — only the designated taker can miss one.'},
+ {key:'points',label:'Points',group:'Fantasy',src:'fpl',pos:['GK','DEF','MID','FWD'],fmt:'2dp',k:6,dir:1,
+  desc:'FPL points. A scoring convention rather than a football measurement, weighted toward goals, clean sheets and simply turning up.'},
+ {key:'netpoints',label:'Points (net)',group:'Fantasy',src:'fpl',pos:['GK','DEF','MID','FWD'],fmt:'2dp',k:8,dir:1,
+  desc:'FPL points with appearance points removed — 2 per start of 60 minutes or more, 1 per shorter outing. Raw points per 90 is badly distorted for substitutes, who bank a point for a few minutes on the pitch: a player making twenty nine-minute cameos can top the points-per-90 table on appearance points alone. This strips that out.'},
+ {key:'bps',label:'BPS',group:'Fantasy',src:'fpl',pos:['GK','DEF','MID','FWD'],fmt:'1dp',k:5,dir:1,
+  desc:'Bonus Points System — FPL\u2019s internal per-match score across roughly thirty actions, used to decide who gets bonus points. Not a public football statistic.'},
+ {key:'bonus',label:'Bonus',group:'Fantasy',src:'fpl',pos:['GK','DEF','MID','FWD'],fmt:'2dp',k:10,dir:1,
+  desc:'Bonus points awarded: three, two or one to the highest BPS scorers in each match.'},
+ {key:'influence',label:'Influence',group:'Fantasy',src:'fpl',pos:['GK','DEF','MID','FWD'],fmt:'1dp',k:5,dir:1,
+  desc:'FPL index estimating impact on match outcomes. The weighting is proprietary and unpublished, so treat it as an FPL tool rather than a scouting measure.'},
+ {key:'creativity',label:'Creativity',group:'Fantasy',src:'fpl',pos:['GK','DEF','MID','FWD'],fmt:'1dp',k:6,dir:1,
+  desc:'FPL index for chance creation. Tracks xA closely but is calculated differently and never published in full.'},
+ {key:'threat',label:'Threat',group:'Fantasy',src:'fpl',pos:['GK','DEF','MID','FWD'],fmt:'1dp',k:6,dir:1,
+  desc:'FPL index for goal threat, weighted by shot location and volume. Tracks xG closely.'},
+ {key:'ict',label:'ICT',group:'Fantasy',src:'fpl',pos:['GK','DEF','MID','FWD'],fmt:'1dp',k:5,dir:1,
+  desc:'Influence, Creativity and Threat rolled into one index. Contains nothing the three separate columns do not.'},
+];
+const M=k=>METRICS.find(m=>m.key===k);
+const GROUPS=['Attacking','Defensive','Goalkeeping','Discipline','Fantasy'];
+const KC={Attacking:'k-att',Defensive:'k-def',Goalkeeping:'k-gk',Discipline:'k-dis',Fantasy:'k-fpl'};
+const CC={Attacking:'c-att',Defensive:'c-def',Goalkeeping:'c-gk',Discipline:'c-dis',Fantasy:'c-fpl'};
+const SC={Attacking:'s-att',Defensive:'s-def',Goalkeeping:'s-gk',Discipline:'s-dis',Fantasy:'s-fpl'};
+const TC={Attacking:'t-att',Defensive:'t-def',Goalkeeping:'t-gk',Discipline:'t-dis',
+  Fantasy:'t-fpl',All:'t-all'};
+/* The Fantasy tab is a view, not a group: everything that moves the points
+   total, wherever it lives, followed by FPL's own indices. */
+const FANTASY_SET=['points','netpoints','bonus','bps','goals','assists','cs','saves',
+  'pensaved','penmissed','yellow','red','og','influence','creativity','threat','ict'];
+const SRC={match:'Match data, from the Premier League\u2019s official feed.',
+  fpl:'Fantasy Premier League scoring layer — a game convention, not a football measurement.'};
+
+const FRAME_DEFS=[
+ {id:'total',label:'Total',block:'obs',
+  tip:['total','The raw count across the selected range. No adjustment of any kind.']},
+ {id:'p90',label:'/90',block:'der',
+  tip:['per 90 minutes','Total divided by 90-minute periods played. Honest for regular starters, unstable for short samples — one goal in 120 minutes reads as 0.75 per 90.']},
+ {id:'app',label:'/app',block:'der',
+  tip:['per appearance','Total divided by matches involved in, however few minutes each. Reads the opposite way to per 90: it flatters starters and punishes substitutes. A wide gap between the two means a cameo role.']},
+ {id:'adj90',label:'Adj',block:'der',
+  tip:['adjusted per 90','The per-90 rate pulled toward the positional average by an amount set by how little of the player we have seen. A full season barely moves; a few hundred minutes moves a long way. The best estimate of a true rate, and what ranking uses.']},
+ {id:'share',label:'Share',block:'der',
+  tip:['share of team','This player\u2019s output as a proportion of their club\u2019s total over the matches they were at the club. Strips out team quality — someone carrying a quarter of a weak side\u2019s chances stands out here in a way raw totals hide. Note this frame is NOT shrunk for sample size, unlike Adj.']},
+];
+const FR=id=>FRAME_DEFS.find(f=>f.id===id);
+
+const BASE_TIPS={
+ web_name:['Player','Name as FPL lists it. Anyone who changed club inside the range is marked “moved” and aggregated under their most recent club. Click any row for the full profile.'],
+ team_name:['Club','Most recent club within the selected season range.'],
+ position:['Position','FPL\u2019s position, which sets both the scoring rules and the comparison pool. Not always where the player actually plays.'],
+ age:['Age','Age today, from FPL\u2019s recorded date of birth.'],
+ minutes:['Minutes','Total minutes across the range. The most important column here — every rate beside it is only as trustworthy as this number is large.'],
+ appearances:['Appearances','Matches with any minutes at all, including late substitutions.'],
+ starts:['Starts','Matches started.'],
+ apps_60:['60+ minutes','Appearances of at least an hour. The gap between this and Appearances separates a nailed starter from someone regularly hooked.'],
+ min_per_app:['Minutes per appearance','Average minutes when involved. A low number means a cameo role however big the total looks.'],
+ minutes_share:['Minutes share','Share of the minutes available at their club while they were there. Survives international breaks and unequal fixture counts in a way raw minutes does not.'],
+};
+const RANK_TIP=['rank','Position among the players currently passing your filters, on the adjusted rate. The denominator is that filtered pool, so it moves as you filter.'];
+const ALLPOS=['GK','DEF','MID','FWD'];
+
+/* Club colours — first and second kit colours, split top/bottom in the bar.
+   Not badges: colours are not protected, so nothing here is trademarked.
+   Unknown clubs fall back to grey. */
+const CLUBS={
+ 'Arsenal':['#EF0107','#FFFFFF'],       'Aston Villa':['#670E36','#95BFE5'],
+ 'Bournemouth':['#DA291C','#000000'],   'Brentford':['#E30613','#FFFFFF'],
+ 'Brighton':['#0057B8','#FFFFFF'],      'Burnley':['#6C1D45','#99D6EA'],
+ 'Chelsea':['#034694','#1F5FA9'],       'Crystal Palace':['#1B458F','#C4122E'],
+ 'Everton':['#003399','#FFFFFF'],       'Fulham':['#FFFFFF','#000000'],
+ 'Ipswich':['#3A64A3','#FFFFFF'],       'Leeds':['#FFFFFF','#1D428A'],
+ 'Leicester':['#003090','#FDBE11'],     'Liverpool':['#C8102E','#00B2A9'],
+ 'Luton':['#F78F1E','#002D62'],         'Man City':['#6CABDD','#1C2C5B'],
+ 'Man Utd':['#DA291C','#000000'],       'Newcastle':['#241F20','#FFFFFF'],
+ "Nott'm Forest":['#DD0000','#FFFFFF'], 'Norwich':['#FFF200','#00A650'],
+ 'Sheffield Utd':['#EE2737','#FFFFFF'], 'Southampton':['#D71920','#FFFFFF'],
+ 'Spurs':['#FFFFFF','#132257'],         'Sunderland':['#EB172B','#FFFFFF'],
+ 'Watford':['#FBEE23','#ED2127'],       'West Brom':['#122F67','#FFFFFF'],
+ 'West Ham':['#7A263A','#1BB1E7'],      'Wolves':['#FDB913','#231F20'],
+};
+const clubBar=(name,lg)=>{
+  const c=CLUBS[name]||['#c9ced6','#9aa3b0'];
+  return `<span class="cbar${lg?' lg':''}" style="--c1:${c[0]};--c2:${c[1]}"></span>`;
+};
+
+const state={seasons:[],pos:[],club:[],nat:[],minMinutes:600,mpaMin:0,
+  q:'',ageMin:null,ageMax:null,pins:[],cmp:null,radars:[],radarMode:'perf',
+  tab:'Attacking',frames:['total','adj90'],off:[],rank:false,
+  sort:'minutes',page:0,sel:null};
+
+/* accent-insensitive compare, so "petrovic" finds "Petrović" */
+const norm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+function readHash(){
+  if(!location.hash)return;
+  const p=new URLSearchParams(location.hash.slice(1));
+  const L=k=>p.get(k)?p.get(k).split(',').filter(Boolean):[];
+  state.seasons=L('sn');
+  state.pos=L('pos');state.club=L('club');state.nat=L('nat');
+  if(p.get('min'))state.minMinutes=+p.get('min');
+  if(p.get('mpa'))state.mpaMin=+p.get('mpa');
+  if(p.get('q'))state.q=p.get('q');
+  if(p.get('a0'))state.ageMin=+p.get('a0');
+  if(p.get('a1'))state.ageMax=+p.get('a1');
+  state.pins=L('pin').map(Number);
+  if(p.get('cmp'))state.cmp=+p.get('cmp');
+  state.radars=L('rad');
+  if(p.get('rmode'))state.radarMode=p.get('rmode');
+  if(p.get('tab'))state.tab=p.get('tab');
+  if(p.has('fr'))state.frames=L('fr');
+  state.off=L('off');
+  state.rank=p.get('rank')==='1';
+  if(p.get('sort'))state.sort=p.get('sort');
+  if(p.get('page'))state.page=+p.get('page');
+}
+function writeHash(){
+  const p=new URLSearchParams();
+  p.set('sn',state.seasons.join(','));
+  if(state.pos.length)p.set('pos',state.pos.join(','));
+  if(state.club.length)p.set('club',state.club.join(','));
+  if(state.nat.length)p.set('nat',state.nat.join(','));
+  p.set('min',state.minMinutes);
+  if(state.mpaMin)p.set('mpa',state.mpaMin);
+  if(state.q)p.set('q',state.q);
+  if(state.ageMin!=null)p.set('a0',state.ageMin);
+  if(state.ageMax!=null)p.set('a1',state.ageMax);
+  if(state.pins.length)p.set('pin',state.pins.join(','));
+  if(state.cmp)p.set('cmp',state.cmp);
+  if(state.radars.length)p.set('rad',state.radars.join(','));
+  if(state.radarMode!=='perf')p.set('rmode',state.radarMode);
+  p.set('tab',state.tab);p.set('fr',state.frames.join(','));
+  if(state.off.length)p.set('off',state.off.join(','));
+  if(state.rank)p.set('rank','1');
+  p.set('sort',state.sort);
+  if(state.page)p.set('page',state.page);
+  history.replaceState(null,'','#'+p.toString());
+}
+
+const store={manifest:null,seasons:{},logs:{},demo:false};
+async function getJSON(f){
+  const r=await fetch(DATA+f,{cache:'no-store'});
+  if(!r.ok)throw new Error(f+' '+r.status);
+  return r.json();
+}
+/* Match logs are large, so they load only when a drawer is first opened. */
+async function loadLogs(season){
+  if(store.logs[season]!==undefined)return store.logs[season];
+  store.logs[season]=null;
+  try{store.logs[season]=await getJSON(`matchlogs_${season}.json`);}
+  catch(e){store.logs[season]=null;}
+  return store.logs[season];
+}
+async function load(){
+  try{
+    store.manifest=await getJSON('manifest.json');
+    try{METRICS=normalise(await getJSON('metrics.json'));}catch(e){}
+    for(const s of store.manifest.seasons)
+      store.seasons[s.season]=await getJSON(`players_${s.season}.json`);
+  }catch(err){
+    store.demo=true;
+    store.manifest={seasons:[{season:'2025-26'}],generated_at:new Date().toISOString()};
+    store.seasons['2025-26']=demoRows();
+  }
+  for(const s in store.seasons)for(const r of store.seasons[s]){
+    if(r.points_total==null||r.appearances==null){r.netpoints_total=null;continue;}
+    const long=r.apps_60??0,short=Math.max(0,r.appearances-long);
+    r.netpoints_total=+(r.points_total-(2*long+short)).toFixed(2);
+  }
+}
+function normalise(raw){
+  return raw.map(m=>({key:m.name,label:m.display_name,group:m.group,src:m.src||'match',
+    pos:(m.applies_to_positions||'GK,DEF,MID,FWD').split(',').map(s=>s.trim()),
+    fmt:m.format||'2dp',k:m.k??10,dir:m.direction??1,share:!!m.share,
+    desc:m.description||M(m.name)?.desc||''}));
+}
+
+function demoRows(){
+  let seed=20252026;
+  const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+  const nrm=()=>(rnd()+rnd()+rnd()-1.5)/1.5;
+  const clubs=['Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Burnley','Chelsea','Crystal Palace','Everton','Fulham','Leeds','Liverpool','Man City','Man Utd',"Nott'm Forest",'Newcastle','Spurs','Sunderland','West Ham','Wolves'];
+  const nats=['England','England','England','France','Brazil','Spain','Portugal','Netherlands','Argentina','Belgium','Germany','Norway','Denmark','Japan','Sweden','Ireland','Scotland','Italy','Uruguay','Ghana'];
+  const fn=['Leo','Marcus','Tomas','Noah','Ilya','Andre','Kai','Bruno','Elias','Jude','Femi','Sacha','Dani','Otto','Ruben','Nico','Ravi','Mateo','Finn','Kasper'];
+  const ln=['Halden','Rivas','Okonkwo','Berg','Marchetti','Duval','Sandoval','Lindqvist','Ferreira','Nakamura','Osei','Kovac','Brennan','Vogel','Almeida','Petrov','Iqbal','Solano','Novak','Whitlock'];
+  const rows=[];let id=1;
+  for(let c=0;c<clubs.length;c++){
+    const str=.55+rnd()*.9;
+    for(const [pos,n] of [['GK',3],['DEF',7],['MID',8],['FWD',4]]){
+      for(let i=0;i<n;i++){
+        const starter=i<(pos==='GK'?1:pos==='DEF'?4:pos==='MID'?4:2);
+        const mins=Math.round((starter?2100+rnd()*1300:180+rnd()*1400)/10)*10;
+        if(mins<90)continue;
+        const n90=mins/90;
+        const att=pos==='FWD'?1:pos==='MID'?.55:pos==='DEF'?.12:0;
+        const def=pos==='DEF'?1:pos==='MID'?.62:pos==='FWD'?.2:0;
+        const r={player_code:id++,web_name:`${fn[Math.floor(rnd()*fn.length)]} ${ln[Math.floor(rnd()*ln.length)]}`,
+          team_name:clubs[c],position:pos,nationality:nats[Math.floor(rnd()*nats.length)],
+          birth_date:`${1991+Math.floor(rnd()*15)}-0${1+Math.floor(rnd()*9)}-1${Math.floor(rnd()*9)}`,
+          minutes:mins,appearances:Math.round(n90*(.9+rnd()*.35)),starts:Math.round(n90*(.75+rnd()*.3)),
+          apps_60:Math.round(n90*(.7+rnd()*.3)),team_minutes:3420,moved:rnd()<.045};
+        const rate=(b,s)=>Math.max(0,b*(1+nrm()*s));
+        const put=(k,p)=>{r[k+'_total']=+(p*n90).toFixed(2);};
+        put('xg',rate(.30*att*str,.7));put('xa',rate(.18*(att*.7+.3)*str,.7));
+        r.xgi_total=+(r.xg_total+r.xa_total).toFixed(2);
+        put('goals',rate(.26*att*str,.9));put('assists',rate(.16*(att*.7+.3)*str,.9));
+        put('threat',rate(38*att*str,.6));put('creativity',rate(30*(att*.6+.4)*str,.6));
+        put('tackles',rate(1.5*def+.3,.5));put('recoveries',rate(5.2*def+1.4,.4));
+        put('cbi',rate(4.4*def+.4,.6));put('defcon',rate(7*def+1.2,.4));
+        if(pos==='GK'){put('saves',rate(3.1/str,.3));put('gc',rate(1.45/str,.35));
+          put('xgc',rate(1.4/str,.3));put('cs',rate(.3*str,.6));put('pensaved',rate(.03,1.4));}
+        else{put('xgc',rate(1.4/str,.3));if(pos==='DEF')put('cs',rate(.3*str,.6));}
+        put('points',rate((pos==='FWD'?4.2:pos==='MID'?3.9:pos==='DEF'?3.6:3.4)*str,.35));
+        put('bps',rate(19*str,.3));put('bonus',rate(.22*str,.9));
+        put('influence',rate(21*str,.35));put('ict',rate(7.5*str,.4));
+        rows.push(r);
+      }
+    }
+  }
+  const byTeam={};
+  for(const r of rows)(byTeam[r.team_name]||=[]).push(r);
+  for(const t in byTeam)for(const m of METRICS.filter(m=>m.share)){
+    const sum=byTeam[t].reduce((a,r)=>a+(r[m.key+'_total']||0),0);
+    for(const r of byTeam[t])if(sum>0&&r[m.key+'_total']!=null)r[m.key+'_team']=sum;
+  }
+  return rows;
+}
+
+const allSeasons=()=>store.manifest.seasons.map(s=>s.season).sort();
+/* chronological — aggregation relies on the newest season landing last,
+   so "most recent club" resolves correctly */
+function seasonsInRange(){
+  const all=allSeasons(),sel=state.seasons.filter(s=>all.includes(s));
+  return sel.length?all.filter(s=>sel.includes(s)):[all[all.length-1]];
+}
+let cacheKey='',cacheRows=null;
+function aggregate(){
+  const key=seasonsInRange().join('|');
+  if(key===cacheKey&&cacheRows)return cacheRows;
+  const by=new Map();
+  for(const s of seasonsInRange())for(const r of (store.seasons[s]||[])){
+    let a=by.get(r.player_code);
+    if(!a){a={player_code:r.player_code,web_name:r.web_name,
+      first_name:r.first_name,second_name:r.second_name,position:r.position,
+      nationality:r.nationality,birth_date:r.birth_date,team_name:r.team_name,minutes:0,
+      appearances:0,starts:0,apps_60:0,team_minutes:0,seasons:0,moved:false,_s:{},_n:{},_d:{}};
+      by.set(r.player_code,a);}
+    a.moved=a.moved||!!r.moved||(a.seasons>0&&a.team_name!==r.team_name);
+    a.team_name=r.team_name;
+    a.minutes+=r.minutes||0;a.appearances+=r.appearances||0;a.starts+=r.starts||0;
+    a.apps_60+=r.apps_60||0;a.team_minutes+=r.team_minutes||0;a.seasons++;
+    for(const m of METRICS){
+      const v=r[m.key+'_total'];
+      if(v!=null)a._s[m.key]=(a._s[m.key]||0)+v;
+      const tm=r[m.key+'_team'],sh=r[m.key+'_share'];
+      if(m.share&&v!=null){
+        if(tm!=null&&tm>0){a._n[m.key]=(a._n[m.key]||0)+v;a._d[m.key]=(a._d[m.key]||0)+tm;}
+        else if(sh!=null&&sh>0){a._n[m.key]=(a._n[m.key]||0)+v;a._d[m.key]=(a._d[m.key]||0)+v/sh;}
+      }
+    }
+  }
+  const rows=[...by.values()],pool={};
+  for(const p of ALLPOS){
+    const set=rows.filter(r=>r.position===p&&r.minutes>=180);pool[p]={};
+    for(const m of METRICS){let t=0,mn=0;
+      for(const r of set)if(r._s[m.key]!=null){t+=r._s[m.key];mn+=r.minutes;}
+      pool[p][m.key]=mn>0?t/(mn/90):null;}
+  }
+  for(const r of rows){
+    const n90=r.minutes/90;
+    r.age=r.birth_date?Math.floor((Date.now()-new Date(r.birth_date))/3.15576e10):null;
+    r.min_per_app=r.appearances?r.minutes/r.appearances:null;
+    r.minutes_share=r.team_minutes?r.minutes/r.team_minutes:null;
+    for(const m of METRICS){
+      const t=r._s[m.key],mean=pool[r.position]?.[m.key];
+      r[m.key+'_total']=t??null;
+      r[m.key+'_p90']=t!=null&&n90>0?t/n90:null;
+      r[m.key+'_app']=t!=null&&r.appearances>0?t/r.appearances:null;
+      r[m.key+'_adj90']=(t!=null&&mean!=null)?(t+m.k*mean)/(n90+m.k):null;
+      r[m.key+'_share']=(m.share&&r._d[m.key])?r._n[m.key]/r._d[m.key]:null;
+    }
+  }
+  cacheKey=key;cacheRows=rows;return rows;
+}
+
+/* metrics available in the current tab, given the position filter */
+function groupMetrics(g){
+  return g==='All'?METRICS
+    :g==='Fantasy'?FANTASY_SET.map(M).filter(Boolean)
+    :METRICS.filter(m=>m.group===g);
+}
+function tabMetrics(){
+  const pos=state.pos.length?state.pos:ALLPOS;
+  return groupMetrics(state.tab).filter(m=>pos.some(p=>m.pos.includes(p)));
+}
+const activeStats=()=>tabMetrics().filter(m=>!state.off.includes(m.key)).map(m=>m.key);
+const activeFrames=()=>FRAME_DEFS.filter(f=>state.frames.includes(f.id));
+
+function columns(){
+  const stats=activeStats(),frames=activeFrames();
+  const cols=[
+   {id:'web_name',label:'Player',block:'id',type:'name'},
+   {id:'team_name',label:'Club',block:'id',type:'txt',cls:'club'},
+   {id:'position',label:'Pos',block:'id',type:'txt'},
+   {id:'age',label:'Age',block:'id',fmt:'int'},
+   {id:'minutes',label:'Min',block:'obs',fmt:'int',gap:true},
+   {id:'appearances',label:'Apps',block:'obs',fmt:'int'},
+   {id:'starts',label:'Starts',block:'obs',fmt:'int'},
+   {id:'apps_60',label:'60+',block:'obs',fmt:'int'},
+   {id:'min_per_app',label:'Min/app',block:'obs',fmt:'int'},
+   {id:'minutes_share',label:'Min %',block:'der',fmt:'pct',gap:true}];
+  const order=METRICS.map(m=>m.key);
+  const sorted=stats.slice().sort((a,b)=>{
+    const fa=M(a).src==='fpl',fb=M(b).src==='fpl';
+    if(fa!==fb)return fa?1:-1;
+    return order.indexOf(a)-order.indexOf(b);});
+  let firstFpl=true;
+  for(const k of sorted){
+    const m=M(k),isFpl=m.src==='fpl';
+    let first=true;
+    for(const f of frames){
+      if(f.id==='share'&&!m.share)continue;
+      cols.push({id:k+'_'+f.id,label:frames.length>1?`${m.label} ${f.label}`:m.label,
+        block:f.block,metric:k,frame:f.id,fplcol:isFpl,
+        fmt:f.id==='share'?'pct':m.fmt,
+        gap:first&&!isFpl?false:false,gapsrc:isFpl&&firstFpl&&first});
+      if(isFpl&&firstFpl&&first)firstFpl=false;
+      first=false;
+    }
+    if(state.rank)cols.push({id:k+'_rank',label:frames.length>1?`${m.label} rank`:`${m.label} rk`,
+      block:'der',metric:k,frame:'rank',type:'rank',fplcol:isFpl});
+  }
+  return cols;
+}
+
+function apply(rows){
+  const q=norm(state.q);
+  const out=rows.filter(r=>r.minutes>=state.minMinutes&&
+    (!state.mpaMin||(r.min_per_app??0)>=state.mpaMin)&&
+    (!q||norm(r.web_name).includes(q)||norm(fullName(r)).includes(q))&&
+    (state.ageMin==null||(r.age!=null&&r.age>=state.ageMin))&&
+    (state.ageMax==null||(r.age!=null&&r.age<=state.ageMax))&&
+    (!state.pos.length||state.pos.includes(r.position))&&
+    (!state.club.length||state.club.includes(r.team_name))&&
+    (!state.nat.length||state.nat.includes(r.nationality)));
+  if(state.rank)for(const k of activeStats()){
+    const m=M(k),f=k+'_adj90';
+    const p=out.filter(r=>r[f]!=null).sort((a,b)=>(b[f]-a[f])*m.dir);
+    p.forEach((r,i)=>{r[k+'_rank']=i+1;r[k+'_rankN']=p.length;});
+    for(const r of out)if(r[f]==null){r[k+'_rank']=null;r[k+'_rankN']=null;}
+  }
+  const s=state.sort,isRank=s.endsWith('_rank');
+  out.sort((a,b)=>{
+    const x=a[s],y=b[s];
+    if(x==null&&y==null)return 0;
+    if(x==null)return 1;if(y==null)return -1;
+    if(isRank)return x-y;
+    if(typeof x==='string')return x.localeCompare(y);
+    return y-x;});
+  return out;
+}
+
+/* Average of whatever is currently on screen. Rates are pooled rather than
+   averaged — sum the totals, divide by the summed minutes — so a big sample
+   is not given the same weight as a small one. */
+function averages(rows,cols){
+  const out={};
+  if(!rows.length)return out;
+  const mean=f=>{const v=rows.map(f).filter(x=>x!=null&&!Number.isNaN(x));
+    return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
+  for(const c of cols){
+    if(c.type==='name'||c.type==='txt'||c.type==='rank'){out[c.id]=null;continue;}
+    if(!c.metric){out[c.id]=mean(r=>r[c.id]);continue;}
+    const k=c.metric;
+    if(c.frame==='total'||c.frame==='adj90'||c.frame==='share'){out[c.id]=mean(r=>r[k+'_total']!=null?r[c.id]:null);continue;}
+    let tot=0,den=0;
+    for(const r of rows){
+      const t=r[k+'_total'];if(t==null)continue;
+      tot+=t;den+=c.frame==='p90'?r.minutes/90:(r.appearances||0);
+    }
+    out[c.id]=den>0?tot/den:null;
+  }
+  return out;
+}
+
+const fmt=(v,f)=>{
+  if(v==null||Number.isNaN(v))return null;
+  if(f==='int')return Math.round(v).toLocaleString();
+  if(f==='1dp')return v.toFixed(1);
+  if(f==='pct')return (v*100).toFixed(1)+'%';
+  return v.toFixed(2);
+};
+const suppressed=(c,r)=>FLOOR>0&&['p90','app','share'].includes(c.frame)&&r.minutes<FLOOR;
+
+function tipFor(c){
+  if(!c)return null;
+  if(BASE_TIPS[c.id]){const[t,d]=BASE_TIPS[c.id];return{title:t,body:d,src:null};}
+  const m=M(c.metric);if(!m)return null;
+  if(c.frame==='rank')return{title:`${m.label} — ${RANK_TIP[0]}`,body:`${RANK_TIP[1]}<br><br>${m.desc}`,src:SRC[m.src]};
+  const f=FR(c.frame);
+  return{title:`${m.label} — ${f.tip[0]}`,body:`${f.tip[1]}<br><br>${m.desc}`,src:SRC[m.src]};
+}
+
+function render(){
+  const rows=apply(aggregate()),cols=columns();
+  const listed=rows.filter(r=>!state.pins.includes(r.player_code)).length;
+  const pages=Math.max(1,Math.ceil(listed/PAGE));
+  state.page=Math.min(state.page,pages-1);
+  if(!cols.some(c=>c.id===state.sort))state.sort='minutes';
+
+  const grp=[];
+  for(const c of cols){
+    const key=c.block+(c.fplcol?':f':'');
+    const last=grp[grp.length-1];
+    if(last&&last.key===key)last.span++;
+    else grp.push({key,block:c.block,fpl:!!c.fplcol,span:1,gap:c.gap,gapsrc:c.gapsrc});
+  }
+  const NAME={id:'',obs:'Observed',der:'Derived'};
+  const thead=document.getElementById('thead');
+  thead.innerHTML='<tr class="blocks">'+grp.map((g,i)=>{
+    const cls=[g.block==='id'?'':g.block,g.fpl?'fplcol':'',g.gap?'gap':'',g.gapsrc?'gapsrc':'',i===0?'name':''].filter(Boolean).join(' ');
+    const lab=g.block==='id'?'':(g.fpl?`<span style="color:var(--g-fpl)">${NAME[g.block]} · fantasy</span>`:NAME[g.block]);
+    return `<th colspan="${g.span}" class="${cls}">${lab}</th>`;}).join('')+
+    '</tr><tr class="labels">'+cols.map(c=>{
+    const m=c.metric?M(c.metric):null;
+    const cls=[c.block==='id'?'':c.block,c.fplcol?'fplcol':'',c.type==='name'?'name':'',
+      c.gap?'gap':'',c.gapsrc?'gapsrc':'',state.sort===c.id?'sorted':'',
+      m?KC[m.group]:'k-base'].filter(Boolean).join(' ');
+    return `<th data-col="${c.id}" class="${cls}">${c.label}</th>`;}).join('')+'</tr>';
+
+  const tbody=document.getElementById('tbody'),empty=document.getElementById('empty');
+  const cell=(c,r)=>{
+    const m=c.metric?M(c.metric):null;
+    const cls=[c.block==='id'?'':c.block,c.fplcol?'fplcol':'',c.gap?'gap':'',c.gapsrc?'gapsrc':''].filter(Boolean).join(' ');
+    if(c.type==='name'){
+      const on=state.pins.includes(r.player_code);
+      return `<td class="name ${cls}"><button class="pin${on?' on':''}" data-pin="${r.player_code}" `+
+        `title="${on?'Unpin':'Pin to top'}">${on?'★':'☆'}</button>${r.web_name}`+
+        `${r.moved?'<span class="moved">moved</span>':''}</td>`;}
+    if(c.type==='txt'){
+      if(c.id==='team_name')return `<td class="txt ${cls} club">${clubBar(r.team_name)}${r.team_name??'—'}</td>`;
+      return `<td class="txt ${cls} ${c.cls||''}">${r[c.id]??'—'}</td>`;}
+    if(c.type==='rank'){
+      const v=r[c.id],n=r[c.id+'N'];
+      if(v==null)return `<td class="${cls} nil">—</td>`;
+      return `<td class="${cls} rank${v<=10?' top '+KC[m.group]:''}">${v}<span class="den"> / ${n}</span></td>`;}
+    const s=suppressed(c,r)?null:fmt(r[c.id],c.fmt);
+    return s==null?`<td class="${cls} nil">—</td>`:`<td class="${cls}">${s}</td>`;
+  };
+  if(!rows.length){
+    tbody.innerHTML='';empty.hidden=false;
+    empty.innerHTML='No players match these filters. <button class="clear" id="ci">Clear filters</button>';
+    document.getElementById('ci').onclick=clearFilters;
+  }else{
+    empty.hidden=true;
+    const avg=averages(rows,cols);
+    const avgRow='<tr class="avg">'+cols.map(c=>{
+      const cls=[c.block==='id'?'':c.block,c.fplcol?'fplcol':'',c.gap?'gap':'',c.gapsrc?'gapsrc':''].filter(Boolean).join(' ');
+      if(c.type==='name')return `<td class="name ${cls}">Average of ${rows.length}</td>`;
+      const s=avg[c.id]==null?null:fmt(avg[c.id],c.fmt);
+      return s==null?`<td class="${cls} nil"></td>`:`<td class="${cls}">${s}</td>`;
+    }).join('')+'</tr>';
+
+    const all=aggregate();
+    const pinned=state.pins.map(c=>all.find(x=>x.player_code===c)).filter(Boolean);
+    const pinnedHtml=pinned.map((r,i)=>
+      `<tr class="pinned${i===pinned.length-1?' last':''}" data-code="${r.player_code}">`+
+      cols.map(c=>cell(c,r)).join('')+'</tr>').join('');
+
+    const body=rows.filter(r=>!state.pins.includes(r.player_code))
+      .slice(state.page*PAGE,state.page*PAGE+PAGE).map(r=>
+      `<tr data-code="${r.player_code}"${state.sel===r.player_code?' class="sel"':''}>`+
+      cols.map(c=>cell(c,r)).join('')+'</tr>').join('');
+
+    tbody.innerHTML=avgRow+pinnedHtml+body;
+    tbody.querySelectorAll('tr[data-code]').forEach(tr=>{
+      tr.onclick=()=>openDrawer(+tr.dataset.code);});
+    tbody.querySelectorAll('[data-pin]').forEach(b=>{
+      b.onclick=e=>{
+        e.stopPropagation();
+        const c=+b.dataset.pin,i=state.pins.indexOf(c);
+        if(i>=0)state.pins.splice(i,1);else state.pins.push(c);
+        render();};});
+  }
+
+  document.getElementById('count').textContent=`${rows.length.toLocaleString()} player${rows.length===1?'':'s'}`;
+  document.getElementById('pagepos').textContent=`${state.page+1} / ${pages}`;
+  document.getElementById('prev').disabled=state.page===0;
+  document.getElementById('next').disabled=state.page>=pages-1;
+  const sr=seasonsInRange(),all=allSeasons();
+  const contiguous=sr.length===1||
+    all.indexOf(sr[sr.length-1])-all.indexOf(sr[0])===sr.length-1;
+  document.getElementById('scope').textContent=
+    sr.length===1?sr[0]:contiguous?`${sr[0]}–${sr[sr.length-1]}`:`${sr.length} seasons`;
+
+  const byId=Object.fromEntries(cols.map(c=>[c.id,c]));
+  thead.querySelectorAll('th[data-col]').forEach(th=>{
+    th.onclick=()=>{state.sort=th.dataset.col;state.page=0;render();};
+    const t=tipFor(byId[th.dataset.col]);
+    if(t){th.onmouseenter=e=>showTip(e,t);th.onmousemove=moveTip;th.onmouseleave=hideTip;}});
+  writeHash();
+}
+
+/* ---------- drawer ---------- */
+function openDrawer(code){
+  const rows=apply(aggregate());
+  const r=rows.find(x=>x.player_code===code)||aggregate().find(x=>x.player_code===code);
+  if(!r)return;
+  state.sel=code;
+  const iso=flagFor(r.nationality);
+  const av=avatarFor(r.team_name);
+  document.getElementById('dFig').innerHTML=
+    `<div class="halo"${r.nationality?` title="${r.nationality}"`:''}>`+
+    (iso?`<img class="flag" src="flags/${iso}.svg" alt="" `+
+         `onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://flagcdn.com/w160/${iso}.png'}else{this.style.display='none'}">`
+        :'')+
+    (av?`<img class="avatar" src="${av}" alt="">`:'<span class="noav"></span>')+
+    `</div>`;
+  const fn=fullName(r);
+  document.getElementById('dName').innerHTML=fn+
+    (fn!==r.web_name?`<span class="dalias">${r.web_name}</span>`:'');
+  const bits=[r.position,r.age!=null?r.age+' years':null,
+    r.moved?'changed club in range':null].filter(Boolean);
+  document.getElementById('dMeta').innerHTML=
+    clubBar(r.team_name,true)+r.team_name+' · '+bits.join(' · ');
+
+  const pair=(k,v)=>`<div class="dpair"><div class="k">${k}</div><div class="v">${v??'—'}</div></div>`;
+  let html=`<div class="dsec s-base"><h3>Availability</h3><div class="dpairs">`+
+    pair('Minutes',fmt(r.minutes,'int'))+pair('Appearances',fmt(r.appearances,'int'))+
+    pair('Starts',fmt(r.starts,'int'))+pair('60+ mins',fmt(r.apps_60,'int'))+
+    pair('Min / app',fmt(r.min_per_app,'int'))+pair('Min share',fmt(r.minutes_share,'pct'))+
+    `</div></div>`;
+
+  const cmpBox=document.getElementById('dCmp');
+  const cands=state.pins.filter(c=>c!==code)
+    .map(c=>aggregate().find(x=>x.player_code===c)).filter(Boolean);
+  cmpBox.innerHTML=cands.length
+    ?`<span class="clbl">Compare with</span>`+cands.map(p=>
+        `<button class="chip cmpchip" data-cmp="${p.player_code}" `+
+        `aria-pressed="${state.cmp===p.player_code}">${p.web_name}</button>`).join('')
+    :`<span class="clbl dim">Pin a player in the table (★) to overlay them here</span>`;
+  cmpBox.querySelectorAll('[data-cmp]').forEach(b=>{
+    b.onclick=()=>{
+      const c=+b.dataset.cmp;
+      state.cmp=state.cmp===c?null:c;
+      openDrawer(code);};});
+
+  const perfOK=['Attacking','Defensive']
+    .filter(g=>groupMetrics(g).some(m=>m.pos.includes(r.position)));
+  const fanOK=groupMetrics('Fantasy').some(m=>m.pos.includes(r.position));
+  if(!perfOK.length)state.radarMode='fantasy';
+  if(!state.radars.length||!state.radars.some(g=>perfOK.includes(g)))
+    state.radars=perfOK.slice(0,1);
+  const mode=state.radarMode==='fantasy'&&fanOK?'fantasy':'perf';
+
+  let ctl=`<div class="rtoggle"><span class="seg rseg">`+
+    (perfOK.length?`<button data-mode="perf" aria-pressed="${mode==='perf'}">Performance</button>`:'')+
+    (fanOK?`<button data-mode="fantasy" aria-pressed="${mode==='fantasy'}">Fantasy</button>`:'')+
+    `</span>`;
+  if(mode==='perf')ctl+=perfOK.map(g=>
+    `<button class="chip ${CC[g]}" data-radar="${g}" `+
+    `aria-pressed="${state.radars.includes(g)}">${g}</button>`).join('');
+  ctl+=`</div>`;
+  html+=ctl;
+  const groups=mode==='fantasy'?['Fantasy']:perfOK.filter(g=>state.radars.includes(g));
+  if(groups.length)html+=radarSVG(r,groups);
+  else html+=`<div class="dsec s-base"><div class="lmsg">No radar selected.</div></div>`;
+
+  for(const g of GROUPS){
+    const ms=drawerMetrics(METRICS.filter(m=>m.group===g&&m.pos.includes(r.position)));
+    if(!ms.length)continue;
+    html+=`<details class="dsec ${SC[g]}"><summary class="dsum">${g}</summary>`+
+      `<table class="dtable"><thead><tr>
+      <th>Metric</th><th>Total</th><th>/90</th><th>/app</th><th>Adj</th><th>Share</th></tr></thead><tbody>`;
+    for(const m of ms){
+      const cell=(id,f)=>{const v=fmt(r[m.key+'_'+id],f||m.fmt);
+        return v==null?'<td class="nil">—</td>':`<td>${v}</td>`;};
+      html+=`<tr><td>${m.label}</td>${cell('total')}${cell('p90')}${cell('app')}${cell('adj90')}`+
+        (m.share?cell('share','pct'):'<td class="nil">—</td>')+`</tr>`;
+    }
+    html+='</tbody></table></details>';
+  }
+  html+='<div class="dsec s-base" id="dLog"><h3>Match log</h3><div class="lmsg">Loading…</div></div>';
+  document.getElementById('dBody').innerHTML=html;
+  document.getElementById('drawer').classList.add('on');
+  document.getElementById('drawer').setAttribute('aria-hidden','false');
+  document.getElementById('backdrop').classList.add('on');
+  document.querySelectorAll('tbody tr').forEach(tr=>
+    tr.classList.toggle('sel',+tr.dataset.code===code));
+  document.querySelectorAll('[data-radar]').forEach(b=>{
+    b.onclick=()=>{
+      const g=b.dataset.radar,i=state.radars.indexOf(g);
+      if(i>=0){if(state.radars.length>1)state.radars.splice(i,1);}
+      else state.radars.push(g);
+      openDrawer(code);};});
+  document.querySelectorAll('[data-mode]').forEach(b=>{
+    b.onclick=()=>{state.radarMode=b.dataset.mode;openDrawer(code);};});
+  document.querySelectorAll('[data-help]').forEach(b=>{
+    const body=decodeURIComponent(b.dataset.help);
+    attachTip(b,{title:'How to read this',body,src:null});});
+  renderLog(r,code);
+}
+
+async function renderLog(r,code){
+  const seasons=seasonsInRange();
+  const data=await Promise.all(seasons.map(loadLogs));
+  if(state.sel!==code)return;                       // drawer changed while loading
+  const box=document.getElementById('dLog');
+  if(!box)return;
+  if(data.every(d=>d==null)){
+    box.innerHTML='<h3>Match log</h3><div class="lmsg">Per-match data not exported yet '+
+      '— add matchlogs_{season}.json to web/data/.</div>';
+    return;
+  }
+  const ms=drawerMetrics(tabMetrics().filter(m=>m.pos.includes(r.position)));
+  /* DC belongs with defensive metrics and with anything points-related */
+  const T=['Defensive','Fantasy','All'].includes(state.tab)?DC_THRESH[r.position]:null;
+  /* Points are an FPL scoring outcome, so they only belong on that view */
+  const showPts=state.tab==='Fantasy'||state.tab==='All';
+  let html='<h3>Match log</h3>',shown=0;
+  for(let i=seasons.length-1;i>=0;i--){
+    const season=seasons[i];
+    /* The export writes a row for every player registered that season,
+       including ones who never played. A season with no appearances has
+       nothing to show, so skip it. */
+    const srow=(store.seasons[season]||[]).find(x=>x.player_code===code);
+    if(!srow||!srow.appearances)continue;
+    const log=data[i]?.[code]||data[i]?.[String(code)];
+    shown++;
+    const club=srow.team_name
+      ?`<span class="lclub">${clubBar(srow.team_name)}${srow.team_name}${srow.moved?' <span class="moved">moved mid-season</span>':''}</span>`:'';
+
+    let hits=0,near=0,rowsHtml='',cols=[],dropped=0;
+    if(log&&log.length){
+      /* A column that is empty all season is noise in a match log. Keep only
+         metrics this player actually registered, per season. */
+      cols=ms.filter(m=>log.some(g=>g[m.key]!=null&&g[m.key]!==0));
+      dropped=ms.length-cols.length;
+      for(const g of [...log].sort((a,b)=>a.gw-b.gw||(a.fixture||0)-(b.fixture||0))){
+        const opp=g.blank?'<span class="nofix">no fixture — blank GW</span>'
+          :g.opp?`${g.opp} <span class="ha">${g.home?'H':'A'}</span>`
+          :'<span class="nil">opponent unknown</span>';
+        const res=(g.team_score!=null&&g.opp_score!=null)?` <span class="sc">${g.team_score}–${g.opp_score}</span>`:'';
+        const cls=g.blank?' class="nofix-row"':(g.minutes===0?' class="blank"':'');
+        let dc='<td class="nil">—</td>';
+        if(T&&!g.blank&&g.minutes>0){
+          const v=dcCount(g,r.position);
+          if(v!=null){
+            const k=v>=T+5?'dc-over':v>=T?'dc-hit':v>=T-2?'dc-near':'';
+            if(v>=T)hits++;else if(v>=T-2)near++;
+            dc=`<td class="${k}">${v}</td>`;
+          }
+        }
+        rowsHtml+=`<tr${cls}><td>${g.gw}</td><td>${opp}${res}</td>`+
+          `<td>${g.blank?'<span class="nil">—</span>':(g.minutes??0)}</td>${T?dc:''}`+
+          cols.map(m=>{const v=fmt(g[m.key],m.fmt);
+            return v==null||g[m.key]===0?'<td class="nil">·</td>':`<td>${v}</td>`;}).join('')+
+          (showPts?`<td>${g.blank?'<span class="nil">—</span>':(g.points??'—')}</td>`:'')+'</tr>';
+      }
+    }
+    const summary=[`${srow.appearances} apps`,`${srow.minutes} min`,
+      T&&log?`<span class="dc-hit-i">${hits}</span> DC${near?` · ${near} near`:''}`:null]
+      .filter(Boolean).join(' · ');
+    html+=`<details class="lsec"><summary class="lseason">`+
+      `<span class="lcar">▸</span>${season}${club}<span class="lsum">${summary}</span></summary>`;
+    html+=(log&&log.length)
+      ?`<table class="dtable log"><thead><tr><th>GW</th><th>Opponent</th><th title="Minutes">Min</th>`+
+        (T?`<th title="Defensive actions counting toward FPL\u2019s threshold">DC</th>`:'')+
+        cols.map(m=>`<th title="${m.label}">${shortOf(m)}</th>`).join('')+
+        (showPts?'<th title="FPL points">Pts</th>':'')+'</tr></thead><tbody>'+
+        rowsHtml+'</tbody></table>'+
+        (dropped?`<div class="ldrop">${dropped} column${dropped>1?'s':''} hidden — nothing recorded all season</div>`:'')
+      :'<div class="lmsg">No per-match data for this season.</div>';
+    html+='</details>';
+  }
+  if(!shown)html+='<div class="lmsg">No Premier League appearances in the selected seasons.</div>';
+  if(T)html+=`<div class="rnote">DC counts the actions FPL uses for defensive points — `+
+    `${r.position==='DEF'?'clearances, blocks, interceptions and tackles':
+      'clearances, blocks, interceptions, tackles and recoveries'}. `+
+    `${r.position==='DEF'?'Defenders':'Midfielders and forwards'} earn 2 points at ${T}+. `+
+    `Green is the threshold met, darker green is ${T+5}+, amber is within two of it.</div>`;
+  box.innerHTML=html;
+}
+function closeDrawer(){
+  state.sel=null;
+  document.getElementById('drawer').classList.remove('on');
+  document.getElementById('drawer').setAttribute('aria-hidden','true');
+  document.getElementById('backdrop').classList.remove('on');
+  document.querySelectorAll('tbody tr.sel').forEach(tr=>tr.classList.remove('sel'));
+}
+document.getElementById('dClose').onclick=closeDrawer;
+document.getElementById('backdrop').onclick=closeDrawer;
+
+/* Compact headers for the match log, where full labels do not fit */
+const SHORT={goals:'G',assists:'A',xg:'xG',xa:'xA',xgi:'xGI',tackles:'Tkl',
+  recoveries:'Rec',cbi:'CBI',defcon:'DefC',saves:'Sv',gc:'GC',xgc:'xGC',cs:'CS',
+  pensaved:'PS',penmissed:'PM',yellow:'YC',red:'RC',og:'OG',points:'Pts',
+  netpoints:'NetP',bps:'BPS',bonus:'B',influence:'Inf',creativity:'Cre',
+  threat:'Thr',ict:'ICT'};
+const shortOf=m=>SHORT[m.key]||m.label;
+
+/* FPL defensive contribution: 2 points at 10+ for defenders (clearances,
+   blocks, interceptions, tackles) and at 12+ for midfielders and forwards
+   (the same plus ball recoveries). Counted from the component columns rather
+   than the defcon field, which may hold points rather than actions. */
+const DC_THRESH={DEF:10,MID:12,FWD:12};
+/* defcon is the same actions the DC column already counts, so it is hidden
+   inside the drawer. It stays available in the main table. */
+const DRAWER_HIDE=['defcon'];
+const drawerMetrics=list=>list.filter(m=>!DRAWER_HIDE.includes(m.key));
+function dcCount(g,pos){
+  const n=v=>v==null?null:v;
+  const cbi=n(g.cbi),tk=n(g.tackles),rc=n(g.recoveries);
+  if(cbi==null&&tk==null&&rc==null)return g.defcon??null;
+  const base=(cbi||0)+(tk||0);
+  return pos==='DEF'?base:base+(rc||0);
+}
+
+/* FPL's web_name is a short display name, usually just the surname. Use the
+   full name where the export provides it. */
+const fullName=r=>{
+  const n=[r.first_name,r.second_name].filter(Boolean).join(' ').trim();
+  return n||r.web_name;
+};
+
+/* ---------- avatar ---------- */
+/* The source PNG's shirt sits at hue 204-209 while skin and hair are at
+   27-31, so the shirt can be repainted without touching the face. Light
+   pixels (shoulders, sleeves) take the club's second colour, the rest the
+   first, with each pixel's own lightness preserved so the shading survives. */
+const AVATAR_SRC='player.png';
+let avatarImg=null;
+const avatarCache=new Map();
+function loadAvatar(){
+  return new Promise(res=>{
+    const im=new Image();
+    im.onload=()=>{avatarImg=im;res(true);};
+    im.onerror=()=>res(false);
+    im.src=AVATAR_SRC;
+  });
+}
+const hex2rgb=h=>{const v=h.replace('#','');
+  return [parseInt(v.slice(0,2),16),parseInt(v.slice(2,4),16),parseInt(v.slice(4,6),16)];};
+function rgb2hsl(r,g,b){
+  r/=255;g/=255;b/=255;
+  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;
+  if(mx===mn)return[0,0,l];
+  const d=mx-mn,s=l>.5?d/(2-mx-mn):d/(mx+mn);
+  let h;
+  if(mx===r)h=(g-b)/d+(g<b?6:0);else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;
+  return[h*60,s,l];
+}
+function hsl2rgb(h,s,l){
+  h=((h%360)+360)%360/360;
+  if(s===0){const v=Math.round(l*255);return[v,v,v];}
+  const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;
+  const f=t=>{t=(t+1)%1;
+    if(t<1/6)return p+(q-p)*6*t;
+    if(t<1/2)return q;
+    if(t<2/3)return p+(q-p)*(2/3-t)*6;
+    return p;};
+  return[Math.round(f(h+1/3)*255),Math.round(f(h)*255),Math.round(f(h-1/3)*255)];
+}
+function avatarFor(club){
+  const [c1,c2]=CLUBS[club]||['#9aa3b0','#c9ced6'];
+  const key=c1+c2;
+  if(avatarCache.has(key))return avatarCache.get(key);
+  if(!avatarImg)return null;
+  try{
+    const cv=document.createElement('canvas');
+    cv.width=avatarImg.width;cv.height=avatarImg.height;
+    const ctx=cv.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(avatarImg,0,0);
+    const d=ctx.getImageData(0,0,cv.width,cv.height),p=d.data;
+    const t1=rgb2hsl(...hex2rgb(c1)),t2=rgb2hsl(...hex2rgb(c2));
+    for(let i=0;i<p.length;i+=4){
+      if(p[i+3]<8)continue;
+      const[h,s,l]=rgb2hsl(p[i],p[i+1],p[i+2]);
+      if(h<190||h>228||s<0.25)continue;          // shirt only
+      const light=l>=0.70,t=light?t2:t1,ref=light?0.75:0.54;
+      const nl=Math.max(.07,Math.min(.94,t[2]+(l-ref)));
+      const[r,g,b]=hsl2rgb(t[0],t[1],nl);
+      p[i]=r;p[i+1]=g;p[i+2]=b;
+    }
+    ctx.putImageData(d,0,0);
+    const url=cv.toDataURL();
+    avatarCache.set(key,url);
+    return url;
+  }catch(e){return null;}   // tainted canvas on file://
+}
+
+/* Nationality -> ISO 3166 alpha-2, for the flag halo. Covers the countries
+   that appear in Premier League squads; anything else falls back to a plain
+   ring. Home nations use their FIFA-style codes and are handled separately. */
+const NATION_ISO={
+ 'England':'gb-eng','Scotland':'gb-sct','Wales':'gb-wls','Northern Ireland':'gb-nir',
+ 'Republic of Ireland':'ie','Ireland':'ie','France':'fr','Spain':'es','Portugal':'pt',
+ 'Brazil':'br','Argentina':'ar','Netherlands':'nl','Belgium':'be','Germany':'de',
+ 'Italy':'it','Norway':'no','Sweden':'se','Denmark':'dk','Finland':'fi','Iceland':'is',
+ 'Switzerland':'ch','Austria':'at','Poland':'pl','Czech Republic':'cz','Czechia':'cz',
+ 'Slovakia':'sk','Hungary':'hu','Croatia':'hr','Serbia':'rs','Slovenia':'si',
+ 'Bosnia and Herzegovina':'ba','Albania':'al','Kosovo':'xk','North Macedonia':'mk',
+ 'Montenegro':'me','Greece':'gr','Turkey':'tr','Ukraine':'ua','Russia':'ru',
+ 'Romania':'ro','Bulgaria':'bg','Estonia':'ee','Latvia':'lv','Lithuania':'lt',
+ 'Japan':'jp','South Korea':'kr','Korea Republic':'kr','China':'cn','Australia':'au',
+ 'New Zealand':'nz','United States':'us','USA':'us','Canada':'ca','Mexico':'mx',
+ 'Jamaica':'jm','Trinidad and Tobago':'tt','Colombia':'co','Uruguay':'uy','Chile':'cl',
+ 'Ecuador':'ec','Paraguay':'py','Peru':'pe','Venezuela':'ve','Bolivia':'bo',
+ 'Nigeria':'ng','Ghana':'gh','Senegal':'sn','Ivory Coast':'ci',"Cote d'Ivoire":'ci',
+ 'Cameroon':'cm','Morocco':'ma','Algeria':'dz','Tunisia':'tn','Egypt':'eg',
+ 'South Africa':'za','Mali':'ml','Guinea':'gn','Burkina Faso':'bf','DR Congo':'cd',
+ 'Congo':'cg','Gabon':'ga','Zimbabwe':'zw','Zambia':'zm','Kenya':'ke','Angola':'ao',
+ 'Cape Verde':'cv','Guinea-Bissau':'gw','Togo':'tg','Benin':'bj','Gambia':'gm',
+ 'Sierra Leone':'sl','Israel':'il','Iran':'ir','Iraq':'iq','Uzbekistan':'uz',
+ 'Armenia':'am','Georgia':'ge','Azerbaijan':'az','India':'in','Philippines':'ph',
+ 'Curacao':'cw','Suriname':'sr','Honduras':'hn','Costa Rica':'cr','Panama':'pa',
+ 'Cuba':'cu','Dominican Republic':'do','Haiti':'ht','Grenada':'gd','Barbados':'bb',
+ 'Saint Kitts and Nevis':'kn','Antigua and Barbuda':'ag','Bermuda':'bm',
+ 'Malta':'mt','Cyprus':'cy','Luxembourg':'lu','Moldova':'md','Belarus':'by',
+};
+const flagFor=nat=>NATION_ISO[nat]||null;
+
+/* ---------- radar ---------- */
+/* Events too rare to percentile: nearly everyone sits at zero, so shrinkage
+   turns the axis into a proxy for minutes played rather than the metric
+   itself. ICT and net points are dropped as duplicates of their components. */
+/* Goalkeeping is too thin and too team-dependent to shape well, and
+   discipline is mostly rare events — neither makes a useful radar. */
+const RADAR_EXCLUDE=['og','red','penmissed','pensaved','ict','netpoints'];
+const RADAR_MAX=8;
+/* 600 minutes is the right bar for a full season, but four gameweeks in
+   nobody clears it. Scale the bar to how much football the selected range
+   actually contains. */
+function radarFloor(){
+  const rows=aggregate();
+  if(!rows.length)return 600;
+  const max=Math.max(...rows.map(r=>r.minutes||0));
+  return Math.round(Math.max(90,Math.min(600,max*0.35)));
+}
+const radarPool=(pos,floor)=>aggregate().filter(x=>x.position===pos&&x.minutes>=floor);
+function radarPoints(r,ms,pool){
+  return ms.map(m=>{
+    const f=m.key+'_adj90',v=r[f];
+    if(v==null)return{m,pct:null,raw:null};
+    const vals=pool.map(x=>x[f]).filter(x=>x!=null);
+    if(vals.length<8)return{m,pct:null,raw:v};
+    const below=vals.filter(x=>m.dir>0?x<v:x>v).length;
+    return{m,pct:Math.round(below/(vals.length-1)*100),raw:v};
+  });
+}
+/* Axes are whichever metrics the current tab shows for this player's
+   position. Values are percentiles against same-position players with 600+
+   minutes in the selected seasons, computed on the adjusted rate. */
+function radarSVG(r,groups){
+  const seen=new Set(),ms=[];
+  for(const g of groups)
+    for(const m of drawerMetrics(groupMetrics(g).filter(x=>x.pos.includes(r.position)))
+        .filter(m=>!RADAR_EXCLUDE.includes(m.key)))
+      if(!seen.has(m.key)){seen.add(m.key);ms.push(m);}
+  const title=groups.join(' + ')+' percentiles';
+  const box=b=>`<div class="dsec s-base"><h3>${title}</h3><div class="lmsg">${b}</div></div>`;
+  if(ms.length<3)return box('Not enough metrics selected to draw a shape.');
+  const axes=ms.slice(0,RADAR_MAX);
+  const floor=radarFloor();
+  const pool=radarPool(r.position,floor);
+  if(pool.length<8)return box(
+    `Only ${pool.length} ${r.position}${pool.length===1?'':'s'} in the selected seasons `+
+    `have ${floor}+ minutes — too few to place anyone against. Percentiles need a `+
+    `populated comparison group, so this fills in as the season progresses.`);
+  const pts=radarPoints(r,axes,pool);
+  if(pts.every(p=>p.pct==null))return box('No comparable values for this player yet.');
+
+  const cmp=state.cmp&&state.cmp!==r.player_code
+    ?aggregate().find(x=>x.player_code===state.cmp):null;
+  const cpool=cmp?radarPool(cmp.position,floor):null;
+  const cpts=cmp&&cpool.length>=8?radarPoints(cmp,axes,cpool):null;
+
+  const W=340,H=300,cx=170,cy=146,R=102;
+  const n=pts.length,ang=i=>-Math.PI/2+i*2*Math.PI/n;
+  const at=(i,rad)=>[cx+Math.cos(ang(i))*rad,cy+Math.sin(ang(i))*rad];
+  const GCOL={Attacking:'var(--g-att)',Defensive:'var(--g-def)',Goalkeeping:'var(--g-gk)',
+    Discipline:'var(--g-dis)',Fantasy:'var(--g-fpl)'};
+  const col=groups.length===1?(GCOL[groups[0]]||'var(--ink)'):'var(--ink)';
+
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="radar" role="img">`;
+  for(const ring of [20,40,60,80,100]){
+    const p=pts.map((_,i)=>at(i,R*ring/100).map(v=>v.toFixed(1)).join(',')).join(' ');
+    s+=`<polygon points="${p}" class="ring${ring===100?' outer':''}"/>`;
+  }
+  pts.forEach((_,i)=>{const[x,y]=at(i,R);
+    s+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="spoke"/>`;});
+
+  if(cpts){
+    const cp=cpts.map((p,i)=>at(i,R*(p.pct??0)/100).map(v=>v.toFixed(1)).join(',')).join(' ');
+    s+=`<polygon points="${cp}" class="area cmp"/>`;
+  }
+  const poly=pts.map((p,i)=>at(i,R*(p.pct??0)/100).map(v=>v.toFixed(1)).join(',')).join(' ');
+  s+=`<polygon points="${poly}" class="area" style="--rc:${col}"/>`;
+  pts.forEach((p,i)=>{if(p.pct==null)return;const[x,y]=at(i,R*p.pct/100);
+    s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" class="dot" `+
+       `style="--rc:${GCOL[p.m.group]||col}"/>`;});
+
+  pts.forEach((p,i)=>{
+    const[x,y]=at(i,R+17);
+    const a=ang(i),anchor=Math.abs(Math.cos(a))<.25?'middle':(Math.cos(a)>0?'start':'end');
+    const dy=Math.sin(a)>.7?9:(Math.sin(a)<-.7?-3:3);
+    const inv=p.m.dir<0?' \u2193':'';
+    const lc=groups.length>1?` style="fill:${GCOL[p.m.group]||'var(--ink-2)'}"`:'';
+    s+=`<text x="${x.toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="${anchor}" class="rlab"${lc}>`+
+       `${p.m.label}${inv}</text>`+
+       `<text x="${x.toFixed(1)}" y="${(y+dy+11).toFixed(1)}" text-anchor="${anchor}" class="rval">`+
+       `${p.pct==null?'\u2014':p.pct+(cpts?'':'<tspan class="rraw">  '+(fmt(p.raw,p.m.fmt)??'')+'</tspan>')}</text>`;
+  });
+  s+='</svg>';
+
+  let legend='',delta='';
+  if(cpts){
+    legend=`<div class="rleg">`+
+      `<span><i class="sw" style="--rc:${col}"></i>${r.web_name}</span>`+
+      `<span><i class="sw cmp"></i>${cmp.web_name}</span></div>`;
+    delta='<table class="dtable cmp"><thead><tr><th>Axis</th>'+
+      `<th>${r.web_name}</th><th>${cmp.web_name}</th><th>Diff</th></tr></thead><tbody>`+
+      pts.map((p,i)=>{
+        const c=cpts[i],d=(p.pct!=null&&c.pct!=null)?p.pct-c.pct:null;
+        const dc=d==null?'nil':d>0?'up':d<0?'down':'';
+        return `<tr><td>${p.m.label}${p.m.dir<0?' \u2193':''}</td>`+
+          `<td>${p.pct??'\u2014'}<span class="rraw2">${fmt(p.raw,p.m.fmt)??''}</span></td>`+
+          `<td>${c.pct??'\u2014'}<span class="rraw2">${fmt(c.raw,p.m.fmt)??''}</span></td>`+
+          `<td class="${dc}">${d==null?'\u2014':(d>0?'+':'')+d}</td></tr>`;}).join('')+
+      '</tbody></table>';
+  }
+
+  const anyInv=pts.some(p=>p.m.dir<0);
+  const help=`<b>Each axis is a percentile, not a raw number.</b> 100 is the best in the `+
+    `comparison group, 0 the worst.`+
+    (anyInv?` Axes marked \u2193 are metrics where a lower raw number is better, so 100 there `+
+      `means fewest.`:'')+
+    `<br><br>${r.web_name} is measured against ${pool.length} ${r.position}s with ${floor}+ minutes`+
+    (cpts&&cmp.position!==r.position
+      ?`, ${cmp.web_name} against ${cpool.length} ${cmp.position}s \u2014 each versus their own `+
+       `position, so the shapes compare standing rather than raw output.`
+      :cpts?` \u2014 both against the same pool.`:`.`)+
+    (floor<600?`<br><br><b>The minutes bar is down to ${floor} because the selected range is `+
+      `short</b> \u2014 these percentiles rest on very few matches and will move a lot.`:'')+
+    (ms.length>RADAR_MAX?`<br><br>Showing the first ${RADAR_MAX} of ${ms.length} metrics.`:'');
+  return `<div class="dsec ${groups.length===1?(SC[groups[0]]||'s-base'):'s-base'}">`+
+    `<h3>${title}<button class="rhelp" data-help="${encodeURIComponent(help)}" `+
+    `aria-label="How to read this">?</button></h3>`+legend+s+delta+`</div>`;
+}
+/* ---------- tooltip ---------- */
+const tip=document.getElementById('tip');
+function showTip(e,t){
+  tip.innerHTML=`<b>${t.title}</b>${t.body}${t.src?`<span class="src">${t.src}</span>`:''}`;
+  tip.classList.add('on');moveTip(e);
+}
+function moveTip(e){
+  const pad=13,w=tip.offsetWidth,h=tip.offsetHeight;
+  let x=e.clientX+pad,y=e.clientY+pad;
+  if(x+w>innerWidth-8)x=e.clientX-w-pad;
+  if(y+h>innerHeight-8)y=e.clientY-h-pad;
+  tip.style.left=Math.max(6,x)+'px';tip.style.top=Math.max(6,y)+'px';
+}
+const hideTip=()=>tip.classList.remove('on');
+const attachTip=(el,t)=>{el.onmouseenter=e=>showTip(e,t);el.onmousemove=moveTip;el.onmouseleave=hideTip;};
+
+/* ---------- controls ---------- */
+/* position: plain toggle buttons, click to add or remove */
+function buildPos(){
+  const host=document.getElementById('fPos');
+  host.innerHTML=ALLPOS.map(p=>
+    `<button class="pos-b" data-p="${p}" aria-pressed="${state.pos.includes(p)}">${p}</button>`).join('');
+  host.querySelectorAll('[data-p]').forEach(b=>{
+    b.onclick=()=>{
+      const p=b.dataset.p,i=state.pos.indexOf(p);
+      if(i>=0)state.pos.splice(i,1);else state.pos.push(p);
+      state.page=0;buildPos();buildTabs();buildFrames();render();};});
+}
+
+/* club / nationality: checkbox dropdown, multi-select, individually removable */
+function buildMulti(hostId,key,values,label,bars,minOne){
+  const host=document.getElementById(hostId);
+  const sel=state[key];
+  host.className='ms';
+  host.innerHTML=
+    `<button class="ms-btn${sel.length?' active':''}">
+       <span>${sel.length===1?sel[0]:label}</span>
+       ${sel.length>1?`<span class="cnt">${sel.length}</span>`:'<span class="car">▾</span>'}
+     </button>
+     <div class="ms-panel">
+       <input class="ms-search" placeholder="Search ${label.toLowerCase()}…">
+       <div class="ms-list"></div>
+       <div class="ms-foot">${minOne?'':'<button data-act="all">Select all</button>'}
+         <button data-act="clear">${minOne?'Latest only':'Clear'}</button></div>
+     </div>`;
+  const btn=host.querySelector('.ms-btn'),panel=host.querySelector('.ms-panel'),
+        list=host.querySelector('.ms-list'),search=host.querySelector('.ms-search');
+  const paint=q=>{
+    const vis=values.filter(v=>!q||v.toLowerCase().includes(q.toLowerCase()));
+    list.innerHTML=vis.length?vis.map(v=>
+      `<label class="ms-opt"><input type="checkbox" data-v="${v}"${state[key].includes(v)?' checked':''}>
+       ${bars?clubBar(v):''}<span class="lbl">${v}</span></label>`).join('')
+      :'<div class="ms-none">Nothing matches.</div>';
+    list.querySelectorAll('input[data-v]').forEach(cb=>{
+      cb.onchange=()=>{
+        const v=cb.dataset.v,i=state[key].indexOf(v);
+        if(cb.checked){if(i<0)state[key].push(v);}
+        else{
+          if(minOne&&state[key].length<=1){cb.checked=true;return;}
+          if(i>=0)state[key].splice(i,1);
+        }
+        state.page=0;
+        btn.classList.toggle('active',state[key].length>0);
+        btn.firstElementChild.textContent=state[key].length===1?state[key][0]:label;
+        btn.lastElementChild.outerHTML=state[key].length>1
+          ?`<span class="cnt">${state[key].length}</span>`:'<span class="car">▾</span>';
+        render();};});
+  };
+  paint('');
+  btn.onclick=e=>{
+    e.stopPropagation();
+    const open=panel.classList.contains('on');
+    document.querySelectorAll('.ms-panel.on').forEach(p=>p.classList.remove('on'));
+    if(!open){panel.classList.add('on');search.value='';paint('');search.focus();}};
+  panel.onclick=e=>e.stopPropagation();
+  search.oninput=()=>paint(search.value);
+  host.querySelectorAll('[data-act]').forEach(b=>{
+    b.onclick=()=>{
+      state[key]=b.dataset.act==='all'?values.slice()
+        :(minOne?[values[0]]:[]);
+      state.page=0;buildMulti(hostId,key,values,label,bars,minOne);
+      document.getElementById(hostId).querySelector('.ms-panel').classList.add('on');
+      render();};});
+}
+addEventListener('click',()=>document.querySelectorAll('.ms-panel.on').forEach(p=>p.classList.remove('on')));
+
+function buildFilters(){
+  const desc=allSeasons().slice().reverse();          // newest first in the list
+  if(!state.seasons.length)state.seasons=[desc[0]];
+  buildMulti('fSeason','seasons',desc,'Seasons',false,true);
+  buildPos();
+  const all=Object.values(store.seasons).flat();
+  buildMulti('fClub','club',[...new Set(all.map(r=>r.team_name))].filter(Boolean).sort(),'Club',true);
+  buildMulti('fNat','nat',[...new Set(all.map(r=>r.nationality))].filter(Boolean).sort(),'Nationality',false);
+}
+function buildControls(){
+  buildFilters();
+  const mi=document.getElementById('fMin'),mv=document.getElementById('fMinVal');
+  mi.value=state.minMinutes;mv.textContent=state.minMinutes;
+  mi.oninput=()=>{mv.textContent=mi.value;};
+  mi.onchange=()=>{state.minMinutes=+mi.value;state.page=0;render();};
+  const pa=document.getElementById('fMpa'),pv=document.getElementById('fMpaVal');
+  pa.value=state.mpaMin;pv.textContent=state.mpaMin;
+  pa.oninput=()=>{pv.textContent=pa.value;};
+  pa.onchange=()=>{state.mpaMin=+pa.value;state.page=0;render();};
+  const q=document.getElementById('fQ');
+  q.value=state.q;
+  q.oninput=()=>{state.q=q.value;state.page=0;render();};
+  const a0=document.getElementById('fAgeMin'),a1=document.getElementById('fAgeMax');
+  a0.value=state.ageMin??'';a1.value=state.ageMax??'';
+  a0.onchange=()=>{state.ageMin=a0.value===''?null:+a0.value;state.page=0;render();};
+  a1.onchange=()=>{state.ageMax=a1.value===''?null:+a1.value;state.page=0;render();};
+  document.getElementById('clearBtn').onclick=clearFilters;
+  document.getElementById('prev').onclick=()=>{state.page--;render();toTop();};
+  document.getElementById('next').onclick=()=>{state.page++;render();toTop();};
+}
+function clearFilters(){
+  state.pos=[];state.club=[];state.nat=[];state.minMinutes=600;state.mpaMin=0;
+  state.q='';state.ageMin=null;state.ageMax=null;state.off=[];state.page=0;
+  state.seasons=[allSeasons()[allSeasons().length-1]];
+  document.getElementById('fMin').value=600;document.getElementById('fMinVal').textContent='600';
+  document.getElementById('fMpa').value=0;document.getElementById('fMpaVal').textContent='0';
+  document.getElementById('fQ').value='';
+  document.getElementById('fAgeMin').value='';document.getElementById('fAgeMax').value='';
+  buildFilters();buildTabs();buildFrames();render();
+}
+const toTop=()=>document.getElementById('tablewrap').scrollTop=0;
+
+function buildTabs(){
+  const pos=state.pos.length?state.pos:ALLPOS;
+  const avail=GROUPS.filter(g=>METRICS.some(m=>m.group===g&&pos.some(p=>m.pos.includes(p))));
+  if(!avail.includes(state.tab)&&state.tab!=='All')state.tab=avail[0]||'All';
+  const bar=document.getElementById('tabs');
+  bar.innerHTML=[...avail,'All'].map(g=>
+    `<button class="tab ${TC[g]}" data-tab="${g}" aria-selected="${state.tab===g}"><span class="dot"></span>${g}</button>`
+  ).join('');
+  bar.querySelectorAll('[data-tab]').forEach(b=>{
+    b.onclick=()=>{state.tab=b.dataset.tab;state.page=0;buildTabs();buildFrames();render();};});
+}
+
+function buildFrames(){
+  const seg=document.getElementById('frameSeg');
+  seg.innerHTML=FRAME_DEFS.map(f=>
+    `<button data-frame="${f.id}" aria-pressed="${state.frames.includes(f.id)}">${f.label}</button>`).join('');
+  seg.querySelectorAll('[data-frame]').forEach(b=>{
+    b.onclick=()=>{
+      const id=b.dataset.frame,i=state.frames.indexOf(id);
+      if(i>=0){if(state.frames.length>1)state.frames.splice(i,1);}
+      else state.frames.push(id);
+      state.frames=FRAME_DEFS.filter(f=>state.frames.includes(f.id)).map(f=>f.id);
+      buildFrames();render();};
+    const f=FR(b.dataset.frame);
+    attachTip(b,{title:f.tip[0],body:f.tip[1],src:null});});
+
+  const chips=document.getElementById('metricChips');
+  chips.innerHTML=tabMetrics().map(m=>
+    `<button class="chip ${CC[m.group]}" data-stat="${m.key}" aria-pressed="${!state.off.includes(m.key)}">${m.label}</button>`
+  ).join('');
+  chips.querySelectorAll('[data-stat]').forEach(b=>{
+    const m=M(b.dataset.stat);
+    b.onclick=()=>{
+      const i=state.off.indexOf(m.key);
+      if(i>=0)state.off.splice(i,1);else state.off.push(m.key);
+      buildFrames();render();};
+    attachTip(b,{title:m.label,body:m.desc,src:SRC[m.src]});});
+
+  const rc=document.getElementById('rankChip');
+  rc.setAttribute('aria-pressed',state.rank);
+  rc.onclick=()=>{state.rank=!state.rank;
+    if(!state.rank&&state.sort.endsWith('_rank'))state.sort='minutes';
+    buildFrames();render();};
+  attachTip(rc,{title:'Rank',body:RANK_TIP[1],src:null});
+}
+
+function freshness(){
+  const el=document.getElementById('freshness'),b=document.getElementById('banner');
+  if(store.demo){b.hidden=false;
+    b.textContent='Showing generated demo data — no files found in web/data/. Run the export, then reload.';
+    el.textContent='demo data';el.classList.add('warn');return;}
+  const t=store.manifest.generated_at?new Date(store.manifest.generated_at):null;
+  if(!t){el.textContent='';return;}
+  const h=(Date.now()-t)/3.6e6;
+  el.textContent=h<1?'built just now':h<48?`built ${Math.round(h)} hours ago`:`built ${Math.round(h/24)} days ago`;
+  el.classList.toggle('warn',h>=168);
+}
+document.getElementById('freshness').onclick=()=>location.reload();
+
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeDrawer();return;}
+  if(e.target.matches('input,select'))return;
+  if(e.key==='ArrowRight'&&!document.getElementById('next').disabled){state.page++;render();toTop();}
+  if(e.key==='ArrowLeft'&&!document.getElementById('prev').disabled){state.page--;render();toTop();}
+  if(e.key==='/'){e.preventDefault();document.querySelector('#fClub .ms-btn')?.click();}
+  const n=+e.key;
+  if(n>=1&&n<=5){const t=document.querySelectorAll('[data-tab]')[n-1];if(t)t.click();}
+});
+
+readHash();await load();await loadAvatar();buildControls();buildTabs();buildFrames();render();freshness();
+</script>
+</body>
+</html>

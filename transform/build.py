@@ -10,6 +10,7 @@ import pandas as pd
 from ingest.client import season_from_bootstrap
 from ingest.paths import DB_DIR, DB_PATH, MARTS
 from transform.columns import (
+    FACT_PLAYER_FIXTURE_COLS,
     FACT_PLAYER_GW_COLS,
     INT_COLS,
     LIVE_STATS_MAP,
@@ -22,12 +23,15 @@ from transform.load import (
     load_latest_api_fixtures,
     load_master_team_list,
     load_merged_gw,
+    load_metric_direction,
     load_players_raw,
+    load_region_lookup,
     load_teams_csv,
     load_vaastav_fixtures,
     load_live_payloads,
 )
 from transform.validate import validate_marts
+from transform.derived import build_derived_tables
 
 FLOAT_COLS = [
     "influence",
@@ -241,17 +245,90 @@ def _sum_keep_na(s: pd.Series) -> float:
     return pd.to_numeric(s, errors="coerce").sum(min_count=1)
 
 
+def _apps_from_minutes(minutes: pd.Series) -> tuple[pd.Series, pd.Series]:
+    m = pd.to_numeric(minutes, errors="coerce").fillna(0)
+    return (m > 0).astype("int64"), (m >= 60).astype("int64")
+
+
+def _player_gw_appearances(rows: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
+    """Matches with minutes > 0 / >= 60, counting distinct fixtures not GW rows."""
+    work = rows.dropna(subset=keys).copy()
+    if work.empty:
+        return pd.DataFrame(columns=keys + ["appearances", "appearances_60_plus"])
+    if "fixture" in work.columns:
+        work = work.drop_duplicates(keys + ["fixture"], keep="first")
+    else:
+        work = work.drop_duplicates(keys, keep="first")
+    if "minutes" not in work.columns:
+        work["appearances"] = 0
+        work["appearances_60_plus"] = 0
+        return work[keys + ["appearances", "appearances_60_plus"]]
+    apps, apps60 = _apps_from_minutes(work["minutes"])
+    work = work.assign(appearances=apps, appearances_60_plus=apps60)
+    return (
+        work.groupby(keys, dropna=False)[["appearances", "appearances_60_plus"]]
+        .sum()
+        .reset_index()
+    )
+
+
+def _attach_row_apps(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    if out.empty:
+        out["appearances"] = pd.Series(dtype="int64")
+        out["appearances_60_plus"] = pd.Series(dtype="int64")
+        return out
+    if "minutes" not in out.columns:
+        out["appearances"] = 0
+        out["appearances_60_plus"] = 0
+        return out
+    apps, apps60 = _apps_from_minutes(out["minutes"])
+    out["appearances"] = apps
+    out["appearances_60_plus"] = apps60
+    return out
+
+
+def _explain_apps(explain, fallback_minutes) -> tuple[int, int]:
+    seen: set = set()
+    mins: list[int] = []
+    for block in explain or []:
+        fid = block.get("fixture")
+        if fid is not None:
+            if fid in seen:
+                continue
+            seen.add(fid)
+        value = 0
+        for stat in block.get("stats") or []:
+            if stat.get("identifier") == "minutes":
+                try:
+                    value = int(stat.get("value") or 0)
+                except (TypeError, ValueError):
+                    value = 0
+                break
+        mins.append(value)
+    if mins:
+        return sum(m > 0 for m in mins), sum(m >= 60 for m in mins)
+    try:
+        m = int(fallback_minutes or 0)
+    except (TypeError, ValueError):
+        m = 0
+    return (1 if m > 0 else 0), (1 if m >= 60 else 0)
+
+
 def _collapse_dgw(df: pd.DataFrame) -> pd.DataFrame:
     """One row per (season, gw, player_code).
 
     Vaastav sometimes repeats the same fixture (keep first). True double-GWs
     have multiple fixture ids: sum stats and null opponent / was_home.
+
+    Appearances are counted from distinct fixtures with minutes > 0, not from
+    the collapsed GW row. A DGW of 90 and 75 is two appearances and two 60+.
     """
     keys = ["season", "gw", "player_code"]
     unmapped = df[df["player_code"].isna()].copy()
     work = df.dropna(subset=["player_code"]).copy()
     if work.empty:
-        return df
+        return _attach_row_apps(df) if "minutes" in df.columns else df
 
     dup_mask = work.duplicated(keys, keep=False)
     single = work.loc[~dup_mask].copy()
@@ -284,22 +361,31 @@ def _collapse_dgw(df: pd.DataFrame) -> pd.DataFrame:
             pieces.append(collapsed)
 
     out = pd.concat(pieces, ignore_index=True, sort=False)
+    apps = _player_gw_appearances(work, keys)
+    out = out.drop(columns=["appearances", "appearances_60_plus"], errors="ignore")
+    out = out.merge(apps, on=keys, how="left")
+    out["appearances"] = out["appearances"].fillna(0).astype("int64")
+    out["appearances_60_plus"] = out["appearances_60_plus"].fillna(0).astype("int64")
     if "fixture" in out.columns:
         out = out.drop(columns=["fixture"])
     if unmapped.empty:
         return out
+    unmapped = _attach_row_apps(unmapped)
     return pd.concat([out, unmapped], ignore_index=True, sort=False)
 
 
-def vaastav_player_gw(
+def _map_vaastav_player_rows(
     merged: pd.DataFrame,
     dim_season_map: pd.DataFrame,
     name_to_code: pd.DataFrame,
     team_id_to_code: pd.DataFrame,
 ) -> pd.DataFrame:
+    """Fixture-level mapped vaastav rows. Still has `fixture`; not collapsed."""
     df = _normalise_merged_gw(merged)
     df["element_id"] = _to_int(df["element_id"])
     df["gw"] = _to_int(df["gw"])
+    if "fixture" in df.columns:
+        df["fixture"] = _to_int(df["fixture"])
     for col in SUM_STAT_COLS + ["value", "xp"]:
         if col in df.columns:
             df[col] = _num(df[col])
@@ -321,8 +407,53 @@ def vaastav_player_gw(
         )
     elif "opponent" not in df.columns:
         df["opponent"] = pd.NA
-    collapsed = _collapse_dgw(df)
-    return coerce_fact_player_gw(collapsed)
+    return df
+
+
+def vaastav_player_gw(
+    merged: pd.DataFrame,
+    dim_season_map: pd.DataFrame,
+    name_to_code: pd.DataFrame,
+    team_id_to_code: pd.DataFrame,
+) -> pd.DataFrame:
+    df = _map_vaastav_player_rows(merged, dim_season_map, name_to_code, team_id_to_code)
+    return coerce_fact_player_gw(_collapse_dgw(df))
+
+
+def _player_fixture_from_mapped(mapped: pd.DataFrame) -> pd.DataFrame:
+    work = mapped.dropna(subset=["player_code"]).copy()
+    if work.empty:
+        return coerce_fact_player_fixture(work)
+    keys = ["season", "gw", "player_code"]
+    if "fixture" in work.columns:
+        work = work.drop_duplicates(keys + ["fixture"], keep="first")
+        work = work.rename(columns={"fixture": "fixture_id"})
+    else:
+        work = work.drop_duplicates(keys, keep="first")
+        work["fixture_id"] = pd.NA
+    return coerce_fact_player_fixture(work)
+
+
+def coerce_fact_player_fixture(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    for col in FACT_PLAYER_FIXTURE_COLS:
+        if col not in out.columns:
+            out[col] = pd.NA
+    out = out[FACT_PLAYER_FIXTURE_COLS]
+    out["season"] = out["season"].astype(str)
+    for col in INT_COLS:
+        if col in out.columns:
+            out[col] = _to_int(out[col])
+    out["fixture_id"] = _to_int(out["fixture_id"])
+    for col in FLOAT_COLS:
+        if col in out.columns:
+            out[col] = _num(out[col])
+    out["was_home"] = out["was_home"].map(
+        lambda v: pd.NA if pd.isna(v) else bool(v)
+    ).astype("boolean")
+    if "value_source" in out.columns:
+        out["value_source"] = out["value_source"].astype("string")
+    return out
 
 
 def coerce_fact_player_gw(df: pd.DataFrame) -> pd.DataFrame:
@@ -435,6 +566,9 @@ def live_player_gw(
             row: dict = {"season": season, "gw": gw, "element_id": el["id"]}
             for src, dest in LIVE_STATS_MAP.items():
                 row[dest] = stats.get(src)
+            apps, apps60 = _explain_apps(explain, stats.get("minutes"))
+            row["appearances"] = apps
+            row["appearances_60_plus"] = apps60
             row["n_fixtures"] = len(fids)
             row["fixture_id"] = fids[0] if len(fids) == 1 else pd.NA
             rows.append(row)
@@ -533,13 +667,210 @@ def live_player_gw(
     return coerce_fact_player_gw(live)
 
 
+def _stats_from_explain_block(block: dict) -> dict:
+    out: dict = {}
+    points = 0
+    for stat in block.get("stats") or []:
+        ident = stat.get("identifier")
+        dest = LIVE_STATS_MAP.get(ident)
+        if dest:
+            out[dest] = stat.get("value")
+        try:
+            points += int(stat.get("points") or 0)
+        except (TypeError, ValueError):
+            pass
+    out["total_points"] = points
+    return out
+
+
+def _api_fixture_sides(
+    api_fixtures: dict[str, list], team_id_to_code: pd.DataFrame
+) -> pd.DataFrame:
+    fx_rows: list[dict] = []
+    for season, payload in api_fixtures.items():
+        for fx in payload or []:
+            fx_rows.append(
+                {
+                    "season": season,
+                    "gw": fx.get("event"),
+                    "fixture_id": fx.get("id"),
+                    "home_team_id": fx.get("team_h"),
+                    "away_team_id": fx.get("team_a"),
+                }
+            )
+    if not fx_rows:
+        return pd.DataFrame()
+    fx = pd.DataFrame(fx_rows)
+    fx["fixture_id"] = _to_int(fx["fixture_id"])
+    fx["gw"] = _to_int(fx["gw"])
+    fx["home_team_id"] = _to_int(fx["home_team_id"])
+    fx["away_team_id"] = _to_int(fx["away_team_id"])
+    fx = fx.merge(
+        team_id_to_code.rename(
+            columns={"team_id": "home_team_id", "team_code": "home_team_code"}
+        ),
+        on=["season", "home_team_id"],
+        how="left",
+    )
+    fx = fx.merge(
+        team_id_to_code.rename(
+            columns={"team_id": "away_team_id", "team_code": "away_team_code"}
+        ),
+        on=["season", "away_team_id"],
+        how="left",
+    )
+    return fx[["season", "gw", "fixture_id", "home_team_code", "away_team_code"]]
+
+
+def _fill_singleton_fixture_id(live: pd.DataFrame, fx: pd.DataFrame) -> pd.DataFrame:
+    if live.empty or fx.empty:
+        return live
+    stacked = pd.concat(
+        [
+            fx[["season", "gw", "fixture_id"]].assign(team_code=fx["home_team_code"]),
+            fx[["season", "gw", "fixture_id"]].assign(team_code=fx["away_team_code"]),
+        ],
+        ignore_index=True,
+    )
+    stacked = stacked.dropna(subset=["team_code", "fixture_id"])
+    nfix = stacked.groupby(["season", "gw", "team_code"], dropna=False)["fixture_id"].transform(
+        "nunique"
+    )
+    singles = stacked.loc[nfix == 1, ["season", "gw", "team_code", "fixture_id"]].drop_duplicates()
+    singles = singles.rename(columns={"fixture_id": "fixture_id_fill"})
+    out = live.merge(singles, on=["season", "gw", "team_code"], how="left")
+    missing = out["fixture_id"].isna()
+    out.loc[missing, "fixture_id"] = out.loc[missing, "fixture_id_fill"]
+    return out.drop(columns=["fixture_id_fill"])
+
+
+def live_player_fixture(
+    dim_season_map: pd.DataFrame,
+    vaastav: pd.DataFrame,
+    team_id_to_code: pd.DataFrame,
+    api_fixtures: dict[str, list],
+    snaps: list[tuple[datetime, dict]],
+) -> pd.DataFrame:
+    """One live row per explain[] fixture. SGW uses the full stats blob."""
+    payloads = load_live_payloads()
+    if not payloads:
+        return pd.DataFrame(columns=FACT_PLAYER_FIXTURE_COLS)
+
+    frames: list[pd.DataFrame] = []
+    for season, gw, payload in payloads:
+        rows = []
+        for el in payload.get("elements") or []:
+            stats = el.get("stats") or {}
+            explain = el.get("explain") or []
+            fids: list = []
+            blocks: dict = {}
+            for block in explain:
+                fid = block.get("fixture")
+                if fid is None or fid in blocks:
+                    continue
+                blocks[fid] = block
+                fids.append(fid)
+            if len(fids) <= 1:
+                row: dict = {
+                    "season": season,
+                    "gw": gw,
+                    "element_id": el["id"],
+                    "fixture_id": fids[0] if fids else pd.NA,
+                }
+                for src, dest in LIVE_STATS_MAP.items():
+                    row[dest] = stats.get(src)
+                rows.append(row)
+            else:
+                for fid in fids:
+                    mapped = _stats_from_explain_block(blocks[fid])
+                    row = {
+                        "season": season,
+                        "gw": gw,
+                        "element_id": el["id"],
+                        "fixture_id": fid,
+                    }
+                    for dest in LIVE_STATS_MAP.values():
+                        row[dest] = mapped.get(dest, pd.NA)
+                    rows.append(row)
+        if rows:
+            frames.append(pd.DataFrame(rows))
+    if not frames:
+        return pd.DataFrame(columns=FACT_PLAYER_FIXTURE_COLS)
+
+    live = pd.concat(frames, ignore_index=True)
+    live["element_id"] = _to_int(live["element_id"])
+    live["gw"] = _to_int(live["gw"])
+    live["fixture_id"] = _to_int(live["fixture_id"])
+    live = live.merge(
+        dim_season_map[["season", "element_id", "player_code"]],
+        on=["season", "element_id"],
+        how="left",
+    )
+
+    ctx_cols = ["season", "gw", "player_code", "team_code", "value", "xp"]
+    ctx = vaastav[ctx_cols].drop_duplicates(subset=["season", "gw", "player_code"])
+    ctx = ctx.rename(columns={"team_code": "team_code_vaastav"})
+    live = live.merge(ctx, on=["season", "gw", "player_code"], how="left")
+
+    snap_el = _snapshot_elements(snaps)
+    if not snap_el.empty:
+        latest_team = (
+            snap_el.sort_values("snapshot_ts")
+            .groupby(["season", "player_code"], as_index=False)
+            .tail(1)[["season", "player_code", "team_code"]]
+            .rename(columns={"team_code": "team_code_snap"})
+        )
+        live = live.merge(latest_team, on=["season", "player_code"], how="left")
+    else:
+        live["team_code_snap"] = pd.NA
+
+    live["team_code"] = _to_int(live["team_code_vaastav"]).fillna(_to_int(live["team_code_snap"]))
+    if "value" not in live.columns:
+        live["value"] = pd.NA
+    live["value_source"] = pd.NA
+    if "xp" not in live.columns:
+        live["xp"] = pd.NA
+
+    fx = _api_fixture_sides(api_fixtures, team_id_to_code)
+    live = _fill_singleton_fixture_id(live, fx)
+    if not fx.empty:
+        live = live.merge(
+            fx[["season", "fixture_id", "home_team_code", "away_team_code"]],
+            on=["season", "fixture_id"],
+            how="left",
+        )
+        home_match = live["team_code"].notna() & (live["team_code"] == live["home_team_code"])
+        away_match = live["team_code"].notna() & (live["team_code"] == live["away_team_code"])
+        from_fx_home = home_match.fillna(False)
+        from_fx_away = away_match.fillna(False)
+        live["was_home"] = pd.Series(pd.NA, index=live.index, dtype="boolean")
+        live.loc[from_fx_home, "was_home"] = True
+        live.loc[from_fx_away, "was_home"] = False
+        live["opponent"] = pd.Series(pd.NA, index=live.index, dtype="Int64")
+        live.loc[from_fx_home, "opponent"] = live.loc[from_fx_home, "away_team_code"]
+        live.loc[from_fx_away, "opponent"] = live.loc[from_fx_away, "home_team_code"]
+    else:
+        live["was_home"] = pd.NA
+        live["opponent"] = pd.NA
+
+    return coerce_fact_player_fixture(live)
+
+
 def combine_player_gw(vaastav: pd.DataFrame, live: pd.DataFrame) -> pd.DataFrame:
+    return _replace_live_gws(vaastav, live)
+
+
+def combine_player_fixture(vaastav: pd.DataFrame, live: pd.DataFrame) -> pd.DataFrame:
+    return _replace_live_gws(vaastav, live)
+
+
+def _replace_live_gws(hist: pd.DataFrame, live: pd.DataFrame) -> pd.DataFrame:
     if live.empty:
-        return vaastav
+        return hist
     live_keys = live[["season", "gw"]].drop_duplicates()
-    hist = vaastav.merge(live_keys, on=["season", "gw"], how="left", indicator=True)
-    hist = hist.loc[hist["_merge"] == "left_only"].drop(columns=["_merge"])
-    return pd.concat([hist, live], ignore_index=True)
+    kept = hist.merge(live_keys, on=["season", "gw"], how="left", indicator=True)
+    kept = kept.loc[kept["_merge"] == "left_only"].drop(columns=["_merge"])
+    return pd.concat([kept, live], ignore_index=True)
 
 
 def assign_value_and_xp(
@@ -857,7 +1188,12 @@ def _write_outputs(tables: dict[str, pd.DataFrame], extra_checks: dict) -> None:
             con.execute(f'CREATE TABLE "{name}" AS SELECT * FROM _df_{name}')
             dest = staging / f"{name}.parquet"
             con.execute(f"COPY {name} TO '{dest.as_posix()}' (FORMAT PARQUET)")
+        current = extra_checks.get("current_players")
+        if current is not None:
+            con.register("_current_players", current)
+            con.execute("CREATE TABLE current_players AS SELECT * FROM _current_players")
         validate_marts(con, extra_checks)
+        con.execute("DROP TABLE IF EXISTS current_players")
     except Exception:
         con.close()
         raise
@@ -903,7 +1239,9 @@ def build_marts() -> None:
     print(f"  dim_player {len(dim_player)} dim_team {len(dim_team)}", flush=True)
 
     print("building fact_player_gw...", flush=True)
-    vaastav_facts = vaastav_player_gw(merged, dim_season_map, name_to_code, team_id_to_code)
+    mapped = _map_vaastav_player_rows(merged, dim_season_map, name_to_code, team_id_to_code)
+    vaastav_facts = coerce_fact_player_gw(_collapse_dgw(mapped))
+    vaastav_fixture = _player_fixture_from_mapped(mapped)
     vaastav_ctx = vaastav_facts[["season", "gw", "player_code", "value", "xp"]].copy()
     live_facts = live_player_gw(
         dim_season_map,
@@ -913,9 +1251,18 @@ def build_marts() -> None:
         snaps,
         bootstrap,
     )
+    live_fixture = live_player_fixture(
+        dim_season_map,
+        vaastav_facts,
+        team_id_to_code,
+        api_fixtures,
+        snaps,
+    )
     fact_player_gw = combine_player_gw(vaastav_facts, live_facts)
     fact_player_gw = assign_value_and_xp(fact_player_gw, vaastav_ctx, snaps, bootstrap)
-    extra: dict = {}
+    print("building fact_player_fixture...", flush=True)
+    fact_player_fixture = combine_player_fixture(vaastav_fixture, live_fixture)
+    print(f"  fact_player_fixture {len(fact_player_fixture)}", flush=True)
 
     print("building remaining facts...")
     fact_fixture = build_fact_fixture(
@@ -926,11 +1273,26 @@ def build_marts() -> None:
     if not fact_player_season.empty:
         fact_player_season["player_code"] = _to_int(fact_player_season["player_code"])
 
+    print("building derived marts...", flush=True)
+    metric_direction = load_metric_direction()
+    region_lookup = load_region_lookup()
+    derived = build_derived_tables(
+        fact_player_gw,
+        fact_fixture,
+        dim_setpieces,
+        players_raw,
+        bootstrap,
+        metric_direction,
+        region_lookup,
+    )
+    extra: dict = {"current_players": derived.pop("_current_players")}
+
     tables = {
         "dim_player": dim_player,
         "dim_team": dim_team,
         "dim_season_map": dim_season_map,
         "fact_player_gw": fact_player_gw,
+        "fact_player_fixture": fact_player_fixture,
         "fact_fixture": fact_fixture,
         "snap_player_day": snap_player_day,
         "dim_setpieces": dim_setpieces,
@@ -939,6 +1301,7 @@ def build_marts() -> None:
         else pd.DataFrame(
             columns=["player_code", "season", "start_cost", "end_cost", "total_points", "minutes"]
         ),
+        **derived,
     }
     print("validating...")
     _write_outputs(tables, extra)

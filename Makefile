@@ -1,9 +1,13 @@
 export PYTHONPATH := .
 
-.PHONY: marts update backfill spot-check
+.PHONY: marts web update backfill spot-check
 
 marts:
 	uv run python -m transform.build
+	uv run python -m transform.export_web
+
+web:
+	uv run python -m transform.export_web
 
 update:
 	uv run python ingest/update.py

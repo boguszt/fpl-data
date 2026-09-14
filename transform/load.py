@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from ingest.client import read_json
-from ingest.paths import RAW, SEASONS, latest_vaastav_file
+from ingest.paths import DATA, RAW, SEASONS, latest_vaastav_file
 
 
 def _read_csv(path: Path) -> pd.DataFrame:
@@ -185,3 +185,23 @@ def load_history_past() -> pd.DataFrame:
     if not rows:
         return pd.DataFrame()
     return pd.DataFrame(rows)
+
+
+def load_metric_direction() -> pd.DataFrame:
+    path = DATA / "metric_direction.csv"
+    df = pd.read_csv(path, dtype={"applies_to_positions": "string"})
+    df["metric_name"] = df["metric_name"].astype("string")
+    df["direction"] = df["direction"].astype("string")
+    df["display_name"] = df["display_name"].astype("string")
+    df["group"] = df["group"].astype("string")
+    return df
+
+
+def load_region_lookup() -> pd.DataFrame:
+    path = DATA / "region_lookup.csv"
+    df = pd.read_csv(path)
+    df["region_id"] = pd.to_numeric(df["region_id"], errors="coerce").astype("Int64")
+    df["country_name"] = df["country_name"].astype("string")
+    df["iso_alpha2"] = df["iso_alpha2"].astype("string")
+    df["iso_alpha3"] = df["iso_alpha3"].astype("string")
+    return df
