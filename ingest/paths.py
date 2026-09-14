@@ -54,6 +54,44 @@ def latest_vaastav_file(season: str, filename: str) -> Path | None:
     return flat if flat.exists() else None
 
 
+def latest_plstats_dir(season: str) -> Path | None:
+    """Latest Opta dump for a season: dated current-season folder, else the flat archive."""
+    root = RAW / "plstats" / season
+    if not root.is_dir():
+        return None
+    dated = [
+        p
+        for p in root.iterdir()
+        if p.is_dir() and len(p.name) == 10 and p.name[4] == "-" and p.name[7] == "-"
+        and (p / "appearances.json").exists()
+    ]
+    if dated:
+        return max(dated, key=lambda p: p.name)
+    if (root / "appearances.json").exists():
+        return root
+    return None
+
+
+def latest_plstats_player(season: str, pulse_id: int) -> Path | None:
+    root = RAW / "plstats" / season
+    if not root.is_dir():
+        return None
+    dated = sorted(
+        (
+            p / "players" / f"{pulse_id}.json"
+            for p in root.iterdir()
+            if p.is_dir() and len(p.name) == 10 and p.name[4] == "-"
+        ),
+        key=lambda p: p.parent.parent.name,
+        reverse=True,
+    )
+    for path in dated:
+        if path.exists():
+            return path
+    flat = root / "players" / f"{pulse_id}.json"
+    return flat if flat.exists() else None
+
+
 def latest_fixtures_file(season: str) -> Path | None:
     root = RAW / "fixtures" / season
     if not root.exists():

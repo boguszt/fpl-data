@@ -16,6 +16,13 @@ from transform.columns import (
     LIVE_STATS_MAP,
     SUM_STAT_COLS,
 )
+from transform.fplcache import (
+    fplcache_dir,
+    inspect_fplcache,
+    load_fplcache_rows,
+    print_inspect,
+    rows_from_payload,
+)
 from transform.load import (
     latest_bootstrap,
     load_bootstrap_snapshots,
@@ -32,6 +39,7 @@ from transform.load import (
 )
 from transform.validate import validate_marts
 from transform.derived import build_derived_tables
+from transform.opta import build_fact_player_season_opta, print_coverage
 
 FLOAT_COLS = [
     "influence",
@@ -53,6 +61,11 @@ def _num(s: pd.Series) -> pd.Series:
 
 def _to_int(s: pd.Series) -> pd.Series:
     return _num(s).astype("Int64")
+
+
+def _opta_int(s: pd.Series) -> pd.Series:
+    cleaned = s.astype("string").str.strip().str.replace(r"^[pP]", "", regex=True)
+    return pd.to_numeric(cleaned, errors="coerce").astype("Int64")
 
 
 def build_id_maps(
@@ -199,13 +212,15 @@ def build_dim_player(players_raw: pd.DataFrame, bootstrap: dict) -> pd.DataFrame
 
     for col in (
         "code",
-        "opta_code",
         "region",
         "current_element_type",
         "current_team_code",
     ):
         if col in dim.columns:
             dim[col] = _to_int(dim[col])
+    if "opta_code" in dim.columns:
+        dim["opta_code"] = _opta_int(dim["opta_code"])
+    dim["opta_code"] = dim["opta_code"].fillna(dim["code"])
     ordered = [
         "code",
         "opta_code",
@@ -1113,23 +1128,18 @@ def build_fact_fixture(
     return out.drop_duplicates(subset=["season", "fixture_id"], keep="last").reset_index(drop=True)
 
 
-def build_snap_player_day(snaps: list[tuple[datetime, dict]]) -> pd.DataFrame:
+def build_snap_player_day(
+    own_snaps: list[tuple[datetime, dict]], fplcache_rows: list[dict] | None = None
+) -> pd.DataFrame:
+    """Union own bootstrap snapshots with fplcache. Identity is player_code, never id."""
     rows: list[dict] = []
-    for ts, payload in snaps:
-        for el in payload.get("elements") or []:
-            rows.append(
-                {
-                    "snapshot_ts": ts.isoformat(),
-                    "player_code": el.get("code"),
-                    "now_cost": el.get("now_cost"),
-                    "selected_by_percent": el.get("selected_by_percent"),
-                    "transfers_in_event": el.get("transfers_in_event"),
-                    "transfers_out_event": el.get("transfers_out_event"),
-                    "status": el.get("status"),
-                    "chance_of_playing_next_round": el.get("chance_of_playing_next_round"),
-                    "news": el.get("news") or None,
-                }
-            )
+    for ts, payload in own_snaps:
+        try:
+            rows.extend(rows_from_payload(ts, payload, "own"))
+        except ValueError as exc:
+            print(f"  skip own snapshot {ts.isoformat()}: {exc}", flush=True)
+    if fplcache_rows:
+        rows.extend(fplcache_rows)
     df = pd.DataFrame(rows)
     if df.empty:
         return df
@@ -1139,7 +1149,14 @@ def build_snap_player_day(snaps: list[tuple[datetime, dict]]) -> pd.DataFrame:
     df["transfers_out_event"] = _to_int(df["transfers_out_event"])
     df["chance_of_playing_next_round"] = _to_int(df["chance_of_playing_next_round"])
     df["selected_by_percent"] = _num(df["selected_by_percent"])
-    return df
+    df["source"] = df["source"].astype("string")
+    df["season"] = df["season"].astype("string")
+    df["status"] = df["status"].astype("string")
+    df["news"] = df["news"].astype("string")
+    df["snapshot_ts"] = df["snapshot_ts"].astype("string")
+    return df.drop_duplicates(
+        subset=["snapshot_ts", "player_code", "source"], keep="last"
+    ).reset_index(drop=True)
 
 
 def build_dim_setpieces(ts: datetime, bootstrap: dict) -> pd.DataFrame:
@@ -1268,7 +1285,19 @@ def build_marts() -> None:
     fact_fixture = build_fact_fixture(
         vaastav_fx, api_fixtures, team_id_to_code, merged, name_to_code
     )
-    snap_player_day = build_snap_player_day(snaps)
+    print("building snap_player_day...", flush=True)
+    fpl_rows: list[dict] = []
+    cache = fplcache_dir()
+    if cache is None:
+        print("  fplcache not found; own snapshots only", flush=True)
+    else:
+        info = inspect_fplcache(cache, measure_uncompressed=False)
+        print_inspect(info)
+        print("  streaming fplcache snapshots...", flush=True)
+        fpl_rows, uncompressed = load_fplcache_rows(cache, info["files"])
+        print(f"  fplcache rows {len(fpl_rows)}  uncompressed {uncompressed:,} bytes", flush=True)
+    snap_player_day = build_snap_player_day(snaps, fpl_rows)
+    print(f"  snap_player_day {len(snap_player_day)}", flush=True)
     fact_player_season = history_past.copy()
     if not fact_player_season.empty:
         fact_player_season["player_code"] = _to_int(fact_player_season["player_code"])
@@ -1287,6 +1316,11 @@ def build_marts() -> None:
     )
     extra: dict = {"current_players": derived.pop("_current_players")}
 
+    print("building fact_player_season_opta...", flush=True)
+    fact_player_season_opta, opta_coverage = build_fact_player_season_opta()
+    print(f"  fact_player_season_opta {len(fact_player_season_opta)}", flush=True)
+    print_coverage(opta_coverage)
+
     tables = {
         "dim_player": dim_player,
         "dim_team": dim_team,
@@ -1301,6 +1335,7 @@ def build_marts() -> None:
         else pd.DataFrame(
             columns=["player_code", "season", "start_cost", "end_cost", "total_points", "minutes"]
         ),
+        "fact_player_season_opta": fact_player_season_opta,
         **derived,
     }
     print("validating...")

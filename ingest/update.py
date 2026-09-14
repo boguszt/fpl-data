@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ingest.client import FplClient, finalised_gameweeks, season_from_bootstrap
+from ingest.plstats import refresh_current_season
 
 
 def main() -> None:
@@ -26,6 +28,9 @@ def main() -> None:
         print(f"finalised gameweeks: {gws}")
         for gw in gws:
             client.pull_live_if_missing(season, gw)
+        if os.environ.get("FPL_PLSTATS") == "1":
+            print("=== Pulse Opta current-season refresh ===")
+            refresh_current_season(season)
 
 
 if __name__ == "__main__":

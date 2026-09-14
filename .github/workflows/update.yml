@@ -2,7 +2,8 @@ name: FPL update
 
 on:
   schedule:
-    - cron: "0 6,18 * * *"
+    - cron: "0 6 * * *"
+    - cron: "0 18 * * *"
   workflow_dispatch:
 
 permissions:
@@ -13,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
+      FPL_PLSTATS: ${{ github.event.schedule == '0 6 * * *' && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

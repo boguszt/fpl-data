@@ -1,6 +1,6 @@
 export PYTHONPATH := .
 
-.PHONY: marts web update backfill spot-check
+.PHONY: marts web update backfill spot-check plstats
 
 marts:
 	uv run python -m transform.build
@@ -14,6 +14,9 @@ update:
 
 backfill:
 	uv run python ingest/backfill.py
+
+plstats:
+	uv run python -m ingest.plstats
 
 spot-check:
 	uv run python transform/spot_check.py

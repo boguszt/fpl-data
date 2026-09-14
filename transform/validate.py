@@ -56,7 +56,7 @@ def validate_marts(con, extra_checks: dict) -> None:
         )
     too_many = played[played["players_with_minutes"] > 900]
     if not too_many.empty:
-        errors.append("GW with >900 players minutes>0 — likely a join explosion")
+        errors.append("GW with >900 players minutes>0 -- likely a join explosion")
 
     xg = con.execute(
         """
@@ -149,6 +149,8 @@ def validate_marts(con, extra_checks: dict) -> None:
 
     _validate_club_fixtures(con, errors)
     _validate_derived(con, errors)
+    _validate_snap_player_day(con, errors)
+    _validate_opta(con, errors)
 
     if errors:
         raise MartValidationError("mart validation failed:\n- " + "\n- ".join(errors))
@@ -454,7 +456,7 @@ def _validate_derived(con, errors: list[str]) -> None:
         LIMIT 10
         """
     ).df()
-    _print_table("2025-26 10 highest-minute players (adj90 should ≈ p90)", hi)
+    _print_table("2025-26 10 highest-minute players (adj90 should ~ p90)", hi)
 
     lo = con.execute(
         """
@@ -576,4 +578,236 @@ def _validate_derived(con, errors: list[str]) -> None:
     n_team = con.execute("SELECT COUNT(*) FROM fact_team_gw").fetchone()[0]
     if n_team == 0:
         errors.append("fact_team_gw is empty")
+
+
+def _validate_snap_player_day(con, errors: list[str]) -> None:
+    tables = {r[0] for r in con.execute("SHOW TABLES").fetchall()}
+    if "snap_player_day" not in tables:
+        errors.append("missing snap_player_day")
+        return
+
+    n = con.execute("SELECT COUNT(*) FROM snap_player_day").fetchone()[0]
+    print(f"== snap_player_day rows: {n} ==")
+    if n == 0:
+        errors.append("snap_player_day is empty")
+        return
+
+    dupes = con.execute(
+        """
+        SELECT snapshot_ts, player_code, source, COUNT(*) AS n
+        FROM snap_player_day
+        GROUP BY 1, 2, 3
+        HAVING COUNT(*) > 1
+        """
+    ).df()
+    print(f"== duplicate (snapshot_ts, player_code, source): {len(dupes)} ==")
+    if not dupes.empty:
+        print(dupes.head(15).to_string(index=False))
+        errors.append(
+            f"duplicate snap_player_day keys: {len(dupes)}"
+        )
+
+    same_ts = con.execute(
+        """
+        SELECT snapshot_ts, player_code, COUNT(*) AS n,
+               COUNT(DISTINCT source) AS sources
+        FROM snap_player_day
+        GROUP BY 1, 2
+        HAVING COUNT(*) > 1
+        """
+    ).df()
+    if not same_ts.empty:
+        print(
+            f"== same snapshot_ts+player_code from multiple sources: {len(same_ts)} "
+            "(kept; timestamp is the data) =="
+        )
+
+    decreasing = con.execute(
+        """
+        WITH ordered AS (
+            SELECT
+                player_code,
+                snapshot_ts,
+                LAG(snapshot_ts) OVER (
+                    PARTITION BY player_code
+                    ORDER BY snapshot_ts, source
+                ) AS prev_ts
+            FROM snap_player_day
+        )
+        SELECT COUNT(*) FROM ordered
+        WHERE prev_ts IS NOT NULL AND snapshot_ts < prev_ts
+        """
+    ).fetchone()[0]
+    print(f"== snapshot_ts decreases per player_code: {decreasing} ==")
+    if decreasing:
+        errors.append(
+            f"snapshot_ts not strictly increasing per player_code ({decreasing} rows)"
+        )
+
+    counts = con.execute(
+        """
+        SELECT snapshot_ts, source, COUNT(*) AS players
+        FROM snap_player_day
+        GROUP BY 1, 2
+        """
+    ).df()
+    bad = counts[(counts["players"] < 300) | (counts["players"] > 900)]
+    print(
+        f"== snapshots with player count outside 300-900: {len(bad)} "
+        f"of {len(counts)} =="
+    )
+    if not bad.empty:
+        print(bad.head(20).to_string(index=False))
+        errors.append(
+            f"{len(bad)} snapshots have player count outside 300-900"
+        )
+
+    days = con.execute(
+        """
+        SELECT season, COUNT(DISTINCT substring(CAST(snapshot_ts AS VARCHAR), 1, 10)) AS days
+        FROM snap_player_day
+        GROUP BY season
+        ORDER BY season
+        """
+    ).df()
+    _print_table("distinct snapshot days by season", days)
+
+    jumps = con.execute(
+        """
+        WITH ordered AS (
+            SELECT
+                player_code,
+                snapshot_ts,
+                source,
+                now_cost,
+                LAG(now_cost) OVER (
+                    PARTITION BY player_code
+                    ORDER BY snapshot_ts, source
+                ) AS prev_cost
+            FROM snap_player_day
+            WHERE now_cost IS NOT NULL
+        )
+        SELECT
+            player_code,
+            snapshot_ts,
+            source,
+            prev_cost,
+            now_cost,
+            now_cost - prev_cost AS tenths
+        FROM ordered
+        WHERE prev_cost IS NOT NULL AND abs(now_cost - prev_cost) > 3
+        ORDER BY abs(now_cost - prev_cost) DESC, snapshot_ts
+        """
+    ).df()
+    print(
+        f"== consecutive now_cost changes > 0.3 ({len(jumps)} rows; "
+        "season boundaries or bad joins; not a failure) =="
+    )
+    if not jumps.empty:
+        print(jumps.head(80).to_string(index=False))
+        if len(jumps) > 80:
+            print(f"  ... {len(jumps) - 80} more")
+
+    by_src = con.execute(
+        """
+        SELECT source, COUNT(*) AS rows,
+               COUNT(DISTINCT substring(CAST(snapshot_ts AS VARCHAR), 1, 10)) AS days,
+               COUNT(DISTINCT player_code) AS players
+        FROM snap_player_day
+        GROUP BY source
+        ORDER BY source
+        """
+    ).df()
+    _print_table("snap_player_day by source", by_src)
+
+    if "dim_player" in tables:
+        named = con.execute(
+            """
+            SELECT d.code, d.web_name, d.first_name, d.second_name
+            FROM dim_player d
+            WHERE d.web_name IN ('M.Salah', 'Salah')
+               OR d.second_name ILIKE 'Salah'
+            ORDER BY d.code
+            LIMIT 5
+            """
+        ).df()
+        if not named.empty:
+            code = int(named.iloc[0]["code"])
+            label = named.iloc[0]["web_name"]
+            stats = con.execute(
+                """
+                WITH ordered AS (
+                    SELECT
+                        now_cost,
+                        snapshot_ts,
+                        LAG(now_cost) OVER (ORDER BY snapshot_ts, source) AS prev
+                    FROM snap_player_day
+                    WHERE player_code = ?
+                )
+                SELECT
+                    COUNT(*) AS rows,
+                    COUNT(DISTINCT substring(CAST(snapshot_ts AS VARCHAR), 1, 10)) AS days,
+                    MIN(substring(CAST(snapshot_ts AS VARCHAR), 1, 10)) AS earliest,
+                    MAX(substring(CAST(snapshot_ts AS VARCHAR), 1, 10)) AS latest,
+                    COUNT(*) FILTER (
+                        WHERE prev IS NOT NULL AND now_cost IS DISTINCT FROM prev
+                    ) AS price_changes
+                FROM ordered
+                """,
+                [code],
+            ).df()
+            print(
+                f"== {label} (player_code={code}) price series: "
+                f"{stats.to_string(index=False)} =="
+            )
+
+
+def _validate_opta(con, errors: list[str]) -> None:
+    tables = {r[0] for r in con.execute("SHOW TABLES").fetchall()}
+    if "dim_player" in tables:
+        opta_null = con.execute(
+            "SELECT COUNT(*) FROM dim_player WHERE opta_code IS NULL"
+        ).fetchone()[0]
+        n = con.execute("SELECT COUNT(*) FROM dim_player").fetchone()[0]
+        print(f"== dim_player opta_code NULL: {opta_null}/{n} ==")
+        if n and opta_null == n:
+            errors.append("dim_player.opta_code is still all NULL")
+
+    if "fact_player_season_opta" not in tables:
+        return
+    counts = con.execute(
+        """
+        SELECT season, COUNT(*) AS players
+        FROM fact_player_season_opta
+        GROUP BY season
+        ORDER BY season
+        """
+    ).df()
+    _print_table("fact_player_season_opta players per season", counts)
+    dupes = con.execute(
+        """
+        SELECT season, player_code, COUNT(*) AS n
+        FROM fact_player_season_opta
+        GROUP BY 1, 2
+        HAVING COUNT(*) > 1
+        """
+    ).df()
+    if not dupes.empty:
+        errors.append(f"duplicate fact_player_season_opta keys: {len(dupes)}")
+
+    cols = {r[0] for r in con.execute("DESCRIBE fact_player_season_opta").fetchall()}
+    if "pass_accuracy" in cols and "total_pass" in cols:
+        bad = con.execute(
+            """
+            SELECT COUNT(*) FROM fact_player_season_opta
+            WHERE pass_accuracy IS NOT NULL
+              AND (total_pass IS NULL OR total_pass = 0)
+            """
+        ).fetchone()[0]
+        if bad:
+            errors.append(
+                f"{bad} pass_accuracy values where total_pass is 0/NULL"
+            )
+
+
 

@@ -36,6 +36,7 @@ python -m http.server 8000 --directory web
 ```bash
 uv run python ingest/backfill.py   # one-shot history
 uv run python ingest/update.py     # idempotent; safe to re-run
+uv run python -m ingest.plstats    # Pulse Opta season-stat archive (2016-17 onward)
 make marts                         # transform + web JSON
 make web                           # JSON only, from existing marts
 python -m http.server 8000 --directory web

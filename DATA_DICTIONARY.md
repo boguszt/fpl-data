@@ -15,7 +15,7 @@ Grain: `code`.
 | column | notes |
 | --- | --- |
 | code | Stable FPL player code |
-| opta_code | Stable when present |
+| opta_code | FPL `p{code}` stripped to int; filled from `code` when the source omitted it |
 | first_name, second_name, web_name | Latest known |
 | birth_date, region | From later bootstrap / `players_raw`; NULL historically |
 | current_element_type | Latest bootstrap: 1=GK, 2=DEF, 3=MID, 4=FWD |
@@ -89,13 +89,46 @@ Home/away team **codes**, kickoff, `result` as `home-away` when played, FDR `hom
 
 Grain: `(snapshot_ts, player_code)`.
 
-One row per player per gzipped `bootstrap-static` pull. These fields mutate continuously and are unrecoverable if not snapshotted: `now_cost`, `selected_by_percent`, `transfers_in_event`, `transfers_out_event`, `status`, `chance_of_playing_next_round`, `news`.
+One row per player per `bootstrap-static` snapshot. These fields mutate continuously and are unrecoverable if not snapshotted: `now_cost`, `selected_by_percent`, `transfers_in_event`, `transfers_out_event`, `status`, `chance_of_playing_next_round`, `news`.
 
-Raw path: `raw/bootstrap/{YYYY-MM-DD}/{HHMM}.json.gz`. Never overwritten. Gzip is required so git stays tractable.
+Grain: `(snapshot_ts, player_code, source)`. Identity is always FPL `code`, never `id` — ids are reused across seasons.
+
+`source` is `own` or `fplcache`:
+
+| source | origin |
+| --- | --- |
+| `own` | `raw/bootstrap/{YYYY-MM-DD}/{HHMM}.json.gz` in this repo |
+| `fplcache` | [Randdalf/fplcache](https://github.com/Randdalf/fplcache) `cache/{year}/{month}/{day}/{time}.json.xz` |
+
+The fplcache files are **not** copied into `raw/` (~850 MB compressed). Clone that repo shallowly outside this tree (`../fplcache-src`, or set `FPLCACHE_DIR`) and rebuild marts. If the clone is absent, `snap_player_day` contains `own` rows only. Same-day own and fplcache snapshots are both kept — different times; the timestamp is the data.
+
+`season` is taken from the bootstrap `events` array (first deadline), not the file date. Fields that did not exist yet (`expected_*`, `defensive_contribution`, `opta_code`) are omitted here; other missing attributes are NULL, never 0.
+
+This mart is exported into `web/data` from 2021-22 onward (fplcache coverage starts 2021-04-18; 2016-17 through 2020-21 have no `pricehistory_*.json` and NULL price columns, never zeros):
+
+- `players_{season}.json`: `price_now` / `price_start` / `price_delta` (millions, 1 dp; `now_cost / 10`) and `own_now` / `own_7d` / `own_30d` (percentage points, 1 dp). Completed seasons are end-of-season values. `own_7d` / `own_30d` are NULL unless a snapshot exists within 48 hours of T−7d / T−30d.
+- `matchlogs_{season}.json`: `price` at that GW's `deadline_time` and `price_delta` vs the previous GW deadline. Snapshot at or immediately before the deadline; both NULL if none within 48 hours — no interpolate or carry-forward. Deadlines come from bootstrap `events`, not fixture kickoff.
+- `pricehistory_{season}.json`: object keyed by `player_code` (string). `start` is the season's first snapshot date; `price` is a change log `[[days_since_start, new_price], ...]` (step function, entry at day 0 when present); `own` is a daily sample (midday-UTC closest snapshot, `null` for missing days so index = day offset).
 
 ## `dim_setpieces`
 
 Grain: `player_code` as of the latest bootstrap (`as_of` date). Penalty / direct FK / corner order. NULL means not on that list.
+
+## `fact_player_season_opta`
+
+Grain: `(season, player_code)`.
+
+Premier League Pulse/Opta season totals from `raw/plstats/`. FPL `code` is the Opta number (`p{code}` = Pulse `altIds.opta`). Pulse `id` is `pulse_id` and is not the FPL code.
+
+Every stat name the API returned is a column (union across seasons; earlier years NULL). Derived, NULL when the denominator is 0, never a fake zero:
+
+- `pass_accuracy` = `accurate_pass / total_pass`
+- `cross_accuracy` = `accurate_cross / total_cross`
+- `duel_win_pct` = `duel_won / (duel_won + duel_lost)`
+- `aerial_win_pct` = `aerial_won / (aerial_won + aerial_lost)`
+- `shot_accuracy` = `ontarget_scoring_att / total_scoring_att`
+
+Census is ranked appearances, not `/football/players`. Closed seasons are a one-shot archive; the current season refreshes on the 06:00 UTC job.
 
 ## `fact_player_season`
 
@@ -193,8 +226,10 @@ FPL `region` is a bare integer on bootstrap / `dim_player`. Names come from FPL 
 | `raw/bootstrap/{YYYY-MM-DD}/{HHMM}.json.gz` | FPL bootstrap-static. Written **every run**, even on identical bytes — the timestamp is the data. Never deduped. |
 | `raw/event-status/{YYYY-MM-DD}/{HHMM}.json` | FPL event-status |
 | `raw/live/{season}/gw{N}.json` | FPL event/{gw}/live |
-| `raw/element-summary/{code}.json` | FPL element-summary (cached by stable code) |
+| `raw/plstats/{season}/appearances.json` | Pulse ranked appearances (verbatim). Closed seasons. |
+| `raw/plstats/{season}/players/{pulse_id}.json` | Pulse `/stats/player/{id}` season totals. Closed seasons; skip if present. |
+| `raw/plstats/{season}/{YYYY-MM-DD}/…` | Current-season dated snapshot; a new date is written only when bytes change. |
 
 ## Cite
 
-Historical CSVs: [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League), including their `xP` caveat. Live: [fantasy.premierleague.com/api](https://fantasy.premierleague.com/api/).
+Historical CSVs: [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League), including their `xP` caveat. Live: [fantasy.premierleague.com/api](https://fantasy.premierleague.com/api/). Price/ownership history also uses [Randdalf/fplcache](https://github.com/Randdalf/fplcache) for `snap_player_day` (`source='fplcache'`); the xz archive is not stored in this repo. Season Opta totals: undocumented [footballapi.pulselive.com](https://footballapi.pulselive.com/football/competitions/1/compseasons) (`Origin: https://www.premierleague.com`).

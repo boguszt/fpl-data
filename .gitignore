@@ -11,3 +11,4 @@ marts/
 tmp_*.py
 scratch/
 .cursor/
+fplcache-src/
