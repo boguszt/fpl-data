@@ -13,7 +13,7 @@ import pandas as pd
 
 from ingest.paths import MARTS, REPO_ROOT
 from transform.explain import attach_explain, load_explain_index
-from transform.metric_copy import OPTA_COUNTS, OPTA_RATIOS, STYLE_COPY
+from transform.metric_copy import OPTA_COUNTS, OPTA_RATIOS, STYLE_COPY, STYLE_FEATURE_FORMAT
 from transform.web_price import (
     NULL_PRICE_SEASONS,
     PRICE_FROM_SEASON,
@@ -440,14 +440,6 @@ def build_season_rows(
         if season >= PRICE_FROM_SEASON and row["player_code"] is not None:
             priced.update(price_cols.get((season, row["player_code"]), {}))
         row.update(priced)
-        for col in OPTA_COUNTS:
-            row[f"o_{col}_total"] = _as_int(rec.get(f"o_{col}"))
-        for col in OPTA_RATIOS:
-            row[f"o_{col}"] = _as_round4(rec.get(f"o_{col}"))
-        for name in STYLE_COPY:
-            if name in OPTA_RATIOS:
-                continue
-            row[f"o_{name}"] = _as_round4(rec.get(f"o_{name}"))
         by_season.setdefault(season, []).append(row)
 
     for rows in by_season.values():
@@ -460,6 +452,36 @@ def build_season_rows(
         raise RuntimeError(
             f"{dropped_minutes} player-seasons with minutes>0 were dropped as 0-appearance"
         )
+    return by_season
+
+
+def build_opta_by_season(
+    frame: pd.DataFrame, keep_codes: dict[str, set[str]]
+) -> dict[str, dict[str, dict]]:
+    """Keyed Opta payloads for web/data/opta_{season}.json. Null keys omitted."""
+    by_season: dict[str, dict[str, dict]] = {}
+    for rec in frame.to_dict("records"):
+        season = str(rec["season"])
+        code = _as_int(rec.get("player_code"))
+        if code is None or str(code) not in keep_codes.get(season, set()):
+            continue
+        payload: dict[str, int | float] = {}
+        for col in OPTA_COUNTS:
+            value = _as_int(rec.get(f"o_{col}"))
+            if value is not None:
+                payload[f"o_{col}_total"] = value
+        for col in OPTA_RATIOS:
+            value = _as_round4(rec.get(f"o_{col}"))
+            if value is not None:
+                payload[f"o_{col}"] = value
+        for name in STYLE_COPY:
+            if name in OPTA_RATIOS:
+                continue
+            value = _as_round4(rec.get(f"o_{name}"))
+            if value is not None:
+                payload[f"o_{name}"] = value
+        if payload:
+            by_season.setdefault(season, {})[str(code)] = payload
     return by_season
 
 
@@ -791,6 +813,15 @@ def export_style_json(keep: set[str]) -> None:
     style = pd.read_parquet(MARTS / "fact_player_style.parquet")
     feats = clustering_feature_names(load_style_features())
     zcols = [f"{n}_z" for n in feats]
+    style_seasons = sorted(fact["season"].astype(str).unique())
+
+    features_meta = _style_features_meta(feats, style, style_seasons)
+    meta_names = [m["name"] for m in features_meta]
+    if meta_names != feats:
+        raise RuntimeError(
+            "features_meta order does not match clustering features: "
+            f"{meta_names} vs {feats}"
+        )
 
     clusters = []
     for _, row in dim.sort_values("cluster_id").iterrows():
@@ -806,7 +837,12 @@ def export_style_json(keep: set[str]) -> None:
                 "centroid": centroid,
             }
         )
-    catalog = {"features": feats, "notes": list(CLUSTER_NOTE_LIST), "clusters": clusters}
+    catalog = {
+        "features": feats,
+        "features_meta": features_meta,
+        "notes": list(CLUSTER_NOTE_LIST),
+        "clusters": clusters,
+    }
     nbytes, changed = _write_json(WEB_DATA / "clusters.json", catalog)
     flag = "" if changed else "  unchanged"
     print(f"  {'clusters.json':28} {nbytes:8,} bytes  {len(clusters)} clusters{flag}", flush=True)
@@ -814,6 +850,7 @@ def export_style_json(keep: set[str]) -> None:
 
     joined = fact.merge(style, on=["season", "player_code"], how="left")
     print("web/data style", flush=True)
+    print(f"  feature order ({len(feats)}): {', '.join(feats)}", flush=True)
     for season in sorted(joined["season"].astype(str).unique()):
         name = f"style_{season}.json"
         keep.add(name)
@@ -821,12 +858,23 @@ def export_style_json(keep: set[str]) -> None:
         block = joined.loc[joined["season"].astype(str) == season]
         for rec in block.to_dict(orient="records"):
             z = [_as_round4(rec[col]) for col in zcols]
+            raw = [_as_round4(rec[name]) for name in feats]
             if any(v is None for v in z):
                 raise RuntimeError(
                     f"incomplete clustering z-vector for {season} {rec['player_code']}"
                 )
+            if any(v is None for v in raw):
+                raise RuntimeError(
+                    f"incomplete clustering raw vector for {season} {rec['player_code']}"
+                )
+            if len(raw) != len(z) or len(z) != len(feats):
+                raise RuntimeError(
+                    f"raw/z/features length mismatch for {season} {rec['player_code']}: "
+                    f"{len(raw)} {len(z)} {len(feats)}"
+                )
             payload[str(int(rec["player_code"]))] = {
                 "z": z,
+                "raw": raw,
                 "c": int(rec["cluster_id"]),
                 "d": _as_round4(rec["distance"]),
                 "c2": int(rec["second_cluster_id"]),
@@ -835,6 +883,32 @@ def export_style_json(keep: set[str]) -> None:
         nbytes, changed = _write_json(WEB_DATA / name, payload)
         flag = "" if changed else "  unchanged"
         print(f"  {name:28} {nbytes:8,} bytes  {len(payload):4} players{flag}", flush=True)
+
+
+def _style_features_meta(
+    feats: list[str], style: pd.DataFrame, seasons: list[str]
+) -> list[dict]:
+    work = style.copy()
+    work["season"] = work["season"].astype(str)
+    work["element_type"] = pd.to_numeric(work["element_type"], errors="coerce")
+    meta = []
+    for name in feats:
+        label = STYLE_COPY[name][0] if name in STYLE_COPY else name.replace("_", " ")
+        fmt = STYLE_FEATURE_FORMAT.get(name, "pct")
+        zcol = f"{name}_z"
+        pool_n: dict[str, dict[str, int]] = {}
+        if zcol in work.columns:
+            for season in seasons:
+                block = work.loc[work["season"] == season]
+                by_pos: dict[str, int] = {}
+                for et, pos in POSITION_LABEL.items():
+                    n = int(block.loc[block["element_type"] == et, zcol].notna().sum())
+                    if n:
+                        by_pos[pos] = n
+                if by_pos:
+                    pool_n[season] = by_pos
+        meta.append({"name": name, "label": label, "format": fmt, "pool_n": pool_n})
+    return meta
 
 
 def _write_json(path: Path, obj) -> tuple[int, bool]:
@@ -950,6 +1024,8 @@ def export() -> dict:
     coverage = _matchlog_coverage(log_frame)
     WEB_DATA.mkdir(parents=True, exist_ok=True)
 
+    opta_by_season = build_opta_by_season(frame, keep_codes)
+
     keep = set(KEEP_JSON)
     season_meta = []
     print("web/data export", flush=True)
@@ -958,9 +1034,21 @@ def export() -> dict:
         keep.add(name)
         rows = by_season[season]
         nbytes, changed = _write_json(WEB_DATA / name, rows)
-        season_meta.append({"season": season, "rows": len(rows)})
         flag = "" if changed else "  unchanged"
         print(f"  {name:28} {nbytes:8,} bytes  {len(rows):4} rows{flag}", flush=True)
+
+        opta = opta_by_season.get(season) or {}
+        has_opta = bool(opta)
+        if has_opta:
+            opta_name = f"opta_{season}.json"
+            keep.add(opta_name)
+            onbytes, ochanged = _write_json(WEB_DATA / opta_name, opta)
+            oflag = "" if ochanged else "  unchanged"
+            print(
+                f"  {opta_name:28} {onbytes:8,} bytes  {len(opta):4} players{oflag}",
+                flush=True,
+            )
+        season_meta.append({"season": season, "rows": len(rows), "opta": has_opta})
 
     print("web/data matchlogs", flush=True)
     too_big = []

@@ -904,6 +904,15 @@ OPTA_COPY: dict[str, tuple[str, str, str]] = {
     ),
 }
 
+# Display format for clustering features in clusters.json features_meta.
+# pct = 0-1 share shown as a percentage; 3dp = small event rates.
+STYLE_FEATURE_FORMAT: dict[str, str] = {
+    "through_ball_share": "3dp",
+    "shots_per_touch": "3dp",
+    "take_on_rate": "3dp",
+    "loss_rate": "3dp",
+}
+
 STYLE_COPY: dict[str, tuple[str, str, str, str]] = {
     "fwd_pass_share": (
         "Forward pass share",
