@@ -47,7 +47,7 @@ You can also run the workflow by hand on that Actions page with **Run workflow**
 | What | Where |
 |---|---|
 | The page you look at | `web/` (HTML, script, flags) |
-| The numbers the page reads | `web/data/*.json` — one player file and one match-log file per season, plus `manifest.json` |
+| The numbers the page reads | `web/data/*.json` — one player file, match-log, teams file and fixtures file per season, plus `manifest.json` and `status.json` |
 | Original downloads from FPL / history | `raw/` — keep these; they are not rebuilt from the page |
 | Temporary rebuilt tables | `marts/` — can be deleted; they are regenerated from `raw/` |
 

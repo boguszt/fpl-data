@@ -1320,6 +1320,7 @@ def build_marts() -> None:
         bootstrap,
         metric_direction,
         region_lookup,
+        fact_player_fixture=fact_player_fixture,
     )
     extra: dict = {"current_players": derived.pop("_current_players")}
 

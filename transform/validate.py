@@ -580,6 +580,49 @@ def _validate_derived(con, errors: list[str]) -> None:
     n_team = con.execute("SELECT COUNT(*) FROM fact_team_gw").fetchone()[0]
     if n_team == 0:
         errors.append("fact_team_gw is empty")
+        return
+    cols = {r[0] for r in con.execute("DESCRIBE fact_team_gw").fetchall()}
+    for need in ("goals_conceded", "clean_sheets", "xgc", "xg"):
+        if need not in cols:
+            errors.append(f"fact_team_gw missing {need}")
+            return
+    chk = con.execute(
+        """
+        SELECT
+            max(xgc) AS xgc_max,
+            median(xgc) AS xgc_med,
+            max(goals_conceded) AS gc_max,
+            sum(xg) AS xg_for,
+            sum(xgc) AS xg_against
+        FROM fact_team_gw
+        WHERE season = '2024-25' AND gw = 1 AND matches_played = 1
+        """
+    ).fetchone()
+    if chk is not None:
+        xgc_max, xgc_med, gc_max, xg_for, xg_against = chk
+        print(
+            f"== fact_team_gw 2024-25 GW1  xgc max={xgc_max} med={xgc_med}  "
+            f"gc max={gc_max}  xg={xg_for} xgc_sum={xg_against} ==",
+            flush=True,
+        )
+        if xgc_max is not None and float(xgc_max) > 8:
+            errors.append(
+                f"fact_team_gw.xgc looks player-summed "
+                f"(2024-25 GW1 max {xgc_max})"
+            )
+        if gc_max is not None and int(gc_max) > 10:
+            errors.append(
+                f"fact_team_gw.goals_conceded looks player-summed "
+                f"(2024-25 GW1 max {gc_max})"
+            )
+        if (
+            xg_for is not None
+            and xg_against is not None
+            and abs(float(xg_for) - float(xg_against)) > 0.05
+        ):
+            errors.append(
+                f"fact_team_gw 2024-25 GW1 xg {xg_for} != xgc {xg_against}"
+            )
 
 
 def _validate_snap_player_day(con, errors: list[str]) -> None:

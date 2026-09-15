@@ -19,7 +19,7 @@ from typing import Any
 import httpx
 
 from ingest.client import season_from_bootstrap, stamp_parts, write_bytes_immutable
-from ingest.paths import RAW, latest_plstats_dir
+from ingest.paths import RAW, latest_plstats_dir, latest_plstats_player
 
 PULSE_BASE = "https://footballapi.pulselive.com/football"
 ORIGIN = "https://www.premierleague.com"
@@ -201,31 +201,10 @@ def opta_from_row(row: dict) -> str | None:
     return text[1:] if text.lower().startswith("p") else text
 
 
-def _latest_player_file(season: str, pulse_id: int) -> Path | None:
-    root = RAW / "plstats" / season
-    if not root.is_dir():
-        return None
-    dated = sorted(
-        (
-            p / "players" / f"{pulse_id}.json"
-            for p in root.iterdir()
-            if p.is_dir() and len(p.name) == 10 and p.name[4] == "-"
-        ),
-        key=lambda p: p.parent.parent.name,
-    )
-    for path in reversed(dated):
-        if path.exists():
-            return path
-    flat = root / "players" / f"{pulse_id}.json"
-    return flat if flat.exists() else None
-
-
-def _latest_appearances_file(season: str) -> Path | None:
-    folder = latest_plstats_dir(season)
-    if folder is None:
-        return None
-    path = folder / "appearances.json"
-    return path if path.exists() else None
+def _same_bytes(path: Path | None, blob: bytes) -> bool:
+    if path is None or not path.exists():
+        return False
+    return hashlib.sha256(path.read_bytes()).digest() == hashlib.sha256(blob).digest()
 
 
 def _write_if_changed(path: Path, blob: bytes, previous: Path | None) -> str:
@@ -249,6 +228,75 @@ def _assert_roster(rows: list[dict], season: str, *, current: bool) -> None:
         )
 
 
+def _pull_dated_current(
+    client: PulseClient, season: str, comp_season_id: int
+) -> dict[str, int]:
+    """Always fetch. Write a new dated dump only when bytes differ from latest."""
+    counts = {"wrote": 0, "skip": 0, "unchanged": 0}
+    app_blob = fetch_appearances_bytes(client, comp_season_id)
+    rows = appearance_rows(json.loads(app_blob))
+    _assert_roster(rows, season, current=True)
+
+    player_blobs: dict[int, bytes] = {}
+    n = len(rows)
+    print(
+        f"  fetching {n} player season totals (current-season refresh always hits Pulse)",
+        flush=True,
+    )
+    for i, row in enumerate(rows, start=1):
+        pid = pulse_id_from_row(row)
+        if pid is None:
+            raise PulseError(f"{season}: appearance row missing player id")
+        player_blobs[pid] = client.get_bytes(
+            f"stats/player/{pid}",
+            {"comps": COMPS, "compSeasons": comp_season_id},
+        )
+        time.sleep(PLAYER_GAP_S)
+        if i % 50 == 0 or i == n:
+            print(f"  {season} players fetched {i}/{n}", flush=True)
+
+    latest = latest_plstats_dir(season)
+    same_app = _same_bytes(latest / "appearances.json" if latest else None, app_blob)
+    same_players = True
+    if latest is not None and same_app:
+        for pid, blob in player_blobs.items():
+            prev = latest / "players" / f"{pid}.json"
+            if not _same_bytes(prev, blob):
+                same_players = False
+                break
+    elif latest is None or not same_app:
+        same_players = False
+
+    if latest is not None and same_app and same_players:
+        counts["unchanged"] = 1 + n
+        print(f"  Pulse current season unchanged vs {latest}", flush=True)
+        return counts
+
+    day, hhmm = stamp_parts()
+    dest_root = RAW / "plstats" / season / day
+    if (dest_root / "appearances.json").exists():
+        dest_root = dest_root / hhmm
+    app_path = dest_root / "appearances.json"
+    if write_bytes_immutable(app_path, app_blob):
+        counts["wrote"] += 1
+        print(f"  appearances wrote {app_path} ({len(app_blob)} bytes)", flush=True)
+    else:
+        counts["skip"] += 1
+
+    players_dir = dest_root / "players"
+    for pid, blob in player_blobs.items():
+        path = players_dir / f"{pid}.json"
+        if write_bytes_immutable(path, blob):
+            counts["wrote"] += 1
+        else:
+            counts["skip"] += 1
+    print(
+        f"  {season} dump {dest_root}  wrote={counts['wrote']} skip={counts['skip']}",
+        flush=True,
+    )
+    return counts
+
+
 def pull_season(
     client: PulseClient,
     season: str,
@@ -256,15 +304,12 @@ def pull_season(
     *,
     dated: bool,
 ) -> dict[str, int]:
-    counts = {"wrote": 0, "skip": 0, "unchanged": 0}
     if dated:
-        day, _ = stamp_parts()
-        dest_root = RAW / "plstats" / season / day
-    else:
-        dest_root = RAW / "plstats" / season
+        return _pull_dated_current(client, season, comp_season_id)
 
+    counts = {"wrote": 0, "skip": 0, "unchanged": 0}
+    dest_root = RAW / "plstats" / season
     app_path = dest_root / "appearances.json"
-    prev_app = _latest_appearances_file(season) if dated else None
 
     if app_path.exists():
         blob = app_path.read_bytes()
@@ -272,14 +317,12 @@ def pull_season(
         print(f"  skip existing {app_path}", flush=True)
     else:
         blob = fetch_appearances_bytes(client, comp_season_id)
-        flag = _write_if_changed(app_path, blob, prev_app)
+        flag = _write_if_changed(app_path, blob, None)
         counts[flag] += 1
         print(f"  appearances {flag} ({len(blob)} bytes)", flush=True)
-        if flag == "unchanged":
-            blob = prev_app.read_bytes() if prev_app is not None else blob
 
     rows = appearance_rows(json.loads(blob))
-    _assert_roster(rows, season, current=dated)
+    _assert_roster(rows, season, current=False)
 
     players_dir = dest_root / "players"
     n = len(rows)
@@ -288,7 +331,7 @@ def pull_season(
         if pid is None:
             raise PulseError(f"{season}: appearance row missing player id")
         path = players_dir / f"{pid}.json"
-        prev = _latest_player_file(season, pid)
+        prev = latest_plstats_player(season, pid)
         if path.exists():
             counts["skip"] += 1
         else:
@@ -319,7 +362,7 @@ def fpl_current_season() -> str | None:
 
 
 def refresh_current_season(season: str | None = None) -> None:
-    """Daily current-season refresh. Dated, skip-if-present, commit-on-byte-change."""
+    """Current-season refresh. Always fetch; write a dated dump only on byte change."""
     with PulseClient() as client:
         if season is None:
             season = fpl_current_season()

@@ -14,7 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
-      FPL_PLSTATS: ${{ github.event.schedule == '0 6 * * *' && '1' || '' }}
+      FPL_PLSTATS: "1"
+      FPL_REQUIRE_FRESH_FEEDS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

@@ -39,7 +39,6 @@ TEAM_METRICS = [
     "xg",
     "xa",
     "xgi",
-    "xgc",
     "goals",
     "assists",
     "minutes",
@@ -166,7 +165,128 @@ def season_element_type(players_raw: pd.DataFrame, bootstrap: dict) -> pd.DataFr
     return out.reset_index(drop=True)
 
 
-def build_fact_team_gw(gw: pd.DataFrame, fact_fixture: pd.DataFrame) -> pd.DataFrame:
+def parse_scoreline(result) -> tuple[int | None, int | None]:
+    """Parse fact_fixture.result `'2-1'` into (home, away). Unplayed -> (None, None)."""
+    if result is None:
+        return None, None
+    try:
+        if pd.isna(result):
+            return None, None
+    except (ValueError, TypeError):
+        pass
+    text = str(result).strip()
+    if not text or "-" not in text:
+        return None, None
+    left, right = text.split("-", 1)
+    try:
+        return int(left), int(right)
+    except ValueError:
+        return None, None
+
+
+def _defensive_from_fixtures(
+    fact_fixture: pd.DataFrame,
+    fact_player_fixture: pd.DataFrame | None,
+) -> pd.DataFrame:
+    """Per (season, gw, team_code): goals_conceded, clean_sheets, xgc from matches.
+
+    gc/cs come from the scoreline. xgc is the opponent's attacking xG in that
+    fixture (player-sum xG of the other side), never FPL's per-player xGC.
+    """
+    empty = pd.DataFrame(
+        columns=["season", "gw", "team_code", "goals_conceded", "clean_sheets", "xgc"]
+    )
+    if fact_fixture.empty:
+        return empty
+    fx = fact_fixture.copy()
+    fx["gw"] = _to_int(fx["gw"])
+    fx["home_team_code"] = _to_int(fx["home_team_code"])
+    fx["away_team_code"] = _to_int(fx["away_team_code"])
+    scores = [parse_scoreline(v) for v in fx["result"].tolist()]
+    fx["home_score"] = pd.array([s[0] for s in scores], dtype="Int64")
+    fx["away_score"] = pd.array([s[1] for s in scores], dtype="Int64")
+    played = fx.loc[fx["home_score"].notna() & fx["away_score"].notna()].copy()
+    if played.empty:
+        return empty
+
+    xg_col = None
+    xg_by_side = pd.DataFrame(columns=["season", "fixture_id", "team_code", "xg_for"])
+    if fact_player_fixture is not None and not fact_player_fixture.empty:
+        work = fact_player_fixture.copy()
+        if "xg" in work.columns:
+            xg_col = "xg"
+        elif "expected_goals" in work.columns:
+            xg_col = "expected_goals"
+        if xg_col is not None:
+            work["fixture_id"] = _to_int(work["fixture_id"])
+            work["team_code"] = _to_int(work["team_code"])
+            work = work.dropna(subset=["fixture_id", "team_code"])
+            xg_by_side = (
+                work.groupby(["season", "fixture_id", "team_code"], dropna=False)[xg_col]
+                .apply(_sum_na)
+                .reset_index()
+                .rename(columns={xg_col: "xg_for"})
+            )
+            xg_by_side["season"] = xg_by_side["season"].astype(str)
+
+    def _side(
+        src: pd.DataFrame,
+        team_col: str,
+        opp_col: str,
+        gf_col: str,
+        ga_col: str,
+    ) -> pd.DataFrame:
+        side = src[
+            ["season", "gw", "fixture_id", team_col, opp_col, gf_col, ga_col]
+        ].rename(
+            columns={
+                team_col: "team_code",
+                opp_col: "opp_code",
+                gf_col: "goals_for",
+                ga_col: "goals_conceded",
+            }
+        )
+        side["clean_sheets"] = (side["goals_conceded"] == 0).astype("Int64")
+        if xg_by_side.empty:
+            side["xgc"] = pd.NA
+            return side
+        opp_xg = xg_by_side.rename(
+            columns={"team_code": "opp_code", "xg_for": "xgc"}
+        )
+        side = side.merge(
+            opp_xg, on=["season", "fixture_id", "opp_code"], how="left"
+        )
+        return side
+
+    stacked = pd.concat(
+        [
+            _side(played, "home_team_code", "away_team_code", "home_score", "away_score"),
+            _side(played, "away_team_code", "home_team_code", "away_score", "home_score"),
+        ],
+        ignore_index=True,
+    )
+    stacked["season"] = stacked["season"].astype(str)
+    stacked["gw"] = _to_int(stacked["gw"])
+    stacked["team_code"] = _to_int(stacked["team_code"])
+    out = (
+        stacked.groupby(["season", "gw", "team_code"], dropna=False)
+        .agg(
+            goals_conceded=("goals_conceded", _sum_na),
+            clean_sheets=("clean_sheets", _sum_na),
+            xgc=("xgc", _sum_na),
+        )
+        .reset_index()
+    )
+    out["goals_conceded"] = _to_int(out["goals_conceded"])
+    out["clean_sheets"] = _to_int(out["clean_sheets"])
+    return out
+
+
+def build_fact_team_gw(
+    gw: pd.DataFrame,
+    fact_fixture: pd.DataFrame,
+    fact_player_fixture: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     work = gw.dropna(subset=["team_code"]).copy()
     agg = {m: _sum_na for m in TEAM_METRICS if m in work.columns}
     team = work.groupby(["season", "gw", "team_code"], dropna=False).agg(agg).reset_index()
@@ -198,6 +318,11 @@ def build_fact_team_gw(gw: pd.DataFrame, fact_fixture: pd.DataFrame) -> pd.DataF
     fallback = team["matches_played"].isna() & (team["minutes"].fillna(0) > 0)
     team.loc[fallback, "matches_played"] = 1
     team["matches_played"] = team["matches_played"].fillna(0).astype("Int64")
+    defensive = _defensive_from_fixtures(fact_fixture, fact_player_fixture)
+    team = team.drop(columns=["xgc", "goals_conceded", "clean_sheets"], errors="ignore")
+    team = team.merge(defensive, on=["season", "gw", "team_code"], how="left")
+    team["goals_conceded"] = _to_int(team["goals_conceded"])
+    team["clean_sheets"] = _to_int(team["clean_sheets"])
     team["season"] = team["season"].astype(str)
     team["gw"] = _to_int(team["gw"])
     team["team_code"] = _to_int(team["team_code"])
@@ -602,10 +727,11 @@ def build_derived_tables(
     bootstrap: dict,
     metric_direction: pd.DataFrame,
     region_lookup: pd.DataFrame,
+    fact_player_fixture: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     gw = rename_gw_metrics(fact_player_gw)
     positions = season_element_type(players_raw, bootstrap)
-    fact_team_gw = build_fact_team_gw(gw, fact_fixture)
+    fact_team_gw = build_fact_team_gw(gw, fact_fixture, fact_player_fixture)
     print(f"  fact_team_gw {len(fact_team_gw)}", flush=True)
     metrics, shrinkage = build_player_metrics(gw, fact_team_gw, positions, metric_direction)
     print(f"  fact_player_season_metrics {len(metrics)}", flush=True)

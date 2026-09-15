@@ -54,42 +54,41 @@ def latest_vaastav_file(season: str, filename: str) -> Path | None:
     return flat if flat.exists() else None
 
 
-def latest_plstats_dir(season: str) -> Path | None:
-    """Latest Opta dump for a season: dated current-season folder, else the flat archive."""
+def plstats_dump_dirs(season: str) -> list[Path]:
+    """Dump folders that contain appearances.json, oldest to newest.
+
+    Current-season layout is `YYYY-MM-DD/` and, if that day already has a
+    dump, a second snapshot at `YYYY-MM-DD/HHMM/`. Closed seasons are the
+    flat `plstats/{season}/` folder.
+    """
     root = RAW / "plstats" / season
     if not root.is_dir():
-        return None
-    dated = [
-        p
-        for p in root.iterdir()
-        if p.is_dir() and len(p.name) == 10 and p.name[4] == "-" and p.name[7] == "-"
-        and (p / "appearances.json").exists()
-    ]
-    if dated:
-        return max(dated, key=lambda p: p.name)
-    if (root / "appearances.json").exists():
-        return root
-    return None
+        return []
+    found: list[Path] = []
+    for app in root.rglob("appearances.json"):
+        folder = app.parent
+        if folder.name == "players":
+            continue
+        found.append(folder)
+
+    def _key(path: Path) -> str:
+        return str(path.relative_to(root)).replace("\\", "/")
+
+    return sorted(found, key=_key)
+
+
+def latest_plstats_dir(season: str) -> Path | None:
+    """Latest Opta dump for a season: dated current-season folder, else the flat archive."""
+    dumps = plstats_dump_dirs(season)
+    return dumps[-1] if dumps else None
 
 
 def latest_plstats_player(season: str, pulse_id: int) -> Path | None:
-    root = RAW / "plstats" / season
-    if not root.is_dir():
-        return None
-    dated = sorted(
-        (
-            p / "players" / f"{pulse_id}.json"
-            for p in root.iterdir()
-            if p.is_dir() and len(p.name) == 10 and p.name[4] == "-"
-        ),
-        key=lambda p: p.parent.parent.name,
-        reverse=True,
-    )
-    for path in dated:
+    for folder in reversed(plstats_dump_dirs(season)):
+        path = folder / "players" / f"{pulse_id}.json"
         if path.exists():
             return path
-    flat = root / "players" / f"{pulse_id}.json"
-    return flat if flat.exists() else None
+    return None
 
 
 def latest_fixtures_file(season: str) -> Path | None:

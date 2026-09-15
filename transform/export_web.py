@@ -11,8 +11,10 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
+from ingest.client import season_from_bootstrap
 from ingest.paths import MARTS, REPO_ROOT
 from transform.explain import attach_explain, load_explain_index
+from transform.load import latest_bootstrap
 from transform.metric_copy import OPTA_COUNTS, OPTA_RATIOS, STYLE_COPY, STYLE_FEATURE_FORMAT
 from transform.web_price import (
     NULL_PRICE_SEASONS,
@@ -157,7 +159,7 @@ METRIC_FROM_SEASON = {
     "defcon": "2025-26",
 }
 
-KEEP_JSON = {"manifest.json", "clusters.json", "metrics_register.json"}
+KEEP_JSON = {"manifest.json", "clusters.json", "metrics_register.json", "status.json"}
 
 
 def _parquet(name: str) -> str:
@@ -803,7 +805,7 @@ def _as_round4(v):
     return round(float(v), 4)
 
 
-def export_style_json(keep: set[str]) -> None:
+def export_style_json(keep: set[str]) -> bool:
     """clusters.json plus style_{season}.json for seasons with assignments."""
     from transform.load import load_style_features
     from transform.style import CLUSTER_NOTE_LIST, clustering_feature_names
@@ -843,8 +845,8 @@ def export_style_json(keep: set[str]) -> None:
         "notes": list(CLUSTER_NOTE_LIST),
         "clusters": clusters,
     }
-    nbytes, changed = _write_json(WEB_DATA / "clusters.json", catalog)
-    flag = "" if changed else "  unchanged"
+    nbytes, catalog_changed = _write_json(WEB_DATA / "clusters.json", catalog)
+    flag = "" if catalog_changed else "  unchanged"
     print(f"  {'clusters.json':28} {nbytes:8,} bytes  {len(clusters)} clusters{flag}", flush=True)
     keep.add("clusters.json")
 
@@ -883,6 +885,7 @@ def export_style_json(keep: set[str]) -> None:
         nbytes, changed = _write_json(WEB_DATA / name, payload)
         flag = "" if changed else "  unchanged"
         print(f"  {name:28} {nbytes:8,} bytes  {len(payload):4} players{flag}", flush=True)
+    return catalog_changed
 
 
 def _style_features_meta(
@@ -1128,7 +1131,58 @@ def export() -> dict:
         path.write_bytes(blob)
 
     print("web/data clusters", flush=True)
-    export_style_json(keep)
+    style_catalog_changed = export_style_json(keep)
+
+    print("web/data teams and fixtures", flush=True)
+    from transform.web_teams import build_fixtures_by_season, build_teams_by_season
+
+    fx = pd.read_parquet(MARTS / "fact_fixture.parquet")
+    team_gw = pd.read_parquet(MARTS / "fact_team_gw.parquet")
+    dim_team = pd.read_parquet(MARTS / "dim_team.parquet")
+    fixtures_by_season = build_fixtures_by_season(fx)
+    teams_by_season = build_teams_by_season(fx, team_gw, dim_team)
+    _, bootstrap = latest_bootstrap()
+    current_season = season_from_bootstrap(bootstrap)
+    current_fx = fixtures_by_season.get(current_season) or []
+    unplayed = [r for r in current_fx if not r["finished"]]
+    missing_diff = sum(
+        1
+        for r in unplayed
+        if r.get("home_difficulty") is None or r.get("away_difficulty") is None
+    )
+    print(
+        f"  {current_season} fixtures {len(current_fx)}  "
+        f"played={sum(1 for r in current_fx if r['finished'])}  "
+        f"unplayed={len(unplayed)}  unplayed_missing_diff={missing_diff}",
+        flush=True,
+    )
+    if len(current_fx) != 380:
+        raise RuntimeError(
+            f"{current_season} fixtures_{current_season}.json has {len(current_fx)} "
+            "rows, expected 380"
+        )
+    if missing_diff:
+        raise RuntimeError(
+            f"{current_season} has {missing_diff} unplayed fixtures without FPL difficulty"
+        )
+    for season, payload in sorted(teams_by_season.items(), reverse=True):
+        name = f"teams_{season}.json"
+        keep.add(name)
+        nbytes, changed = _write_json(WEB_DATA / name, payload)
+        flag = "" if changed else "  unchanged"
+        print(
+            f"  {name:28} {nbytes:8,} bytes  {len(payload):4} teams{flag}",
+            flush=True,
+        )
+    for season, rows in sorted(fixtures_by_season.items(), reverse=True):
+        name = f"fixtures_{season}.json"
+        keep.add(name)
+        nbytes, changed = _write_json(WEB_DATA / name, rows)
+        flag = "" if changed else "  unchanged"
+        print(
+            f"  {name:28} {nbytes:8,} bytes  {len(rows):4} fixtures{flag}",
+            flush=True,
+        )
 
     print("web/data metric register", flush=True)
     from transform.metric_register import (
@@ -1151,6 +1205,12 @@ def export() -> dict:
             print(f"  {err}", flush=True)
         raise RuntimeError("metric register validation failed:\n- " + "\n- ".join(reg_errs))
     print("metric register validation passed", flush=True)
+
+    from transform.web_status import write_web_status
+
+    print("web/data status", flush=True)
+    write_web_status(style_catalog_changed=style_catalog_changed)
+    keep.add("status.json")
 
     manifest = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

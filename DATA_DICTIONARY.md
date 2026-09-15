@@ -95,6 +95,8 @@ Derived concepts with their own rows: `adjusted_per_90`, `percentile`, `share_of
 
 Do not duplicate metric descriptions in `index.html`.
 
+`web/data/status.json` is rewritten every export. `generated_at` is the export clock; each feed's `as_of` is the last successful **fetch** of that feed (not the file write, not the job start). An Opta pull that is a no-op because bytes were unchanged still updates `as_of`. Style `as_of` is when `clusters.json` last changed (fitted model, rebuilt on demand). CI fails if `fpl` / `opta` / `vaastav` `as_of` is more than 30 hours old.
+
 ## `fact_fixture`
 
 Grain: `(season, fixture_id)`.
@@ -144,7 +146,7 @@ Every stat name the API returned is a column (union across seasons; earlier year
 - `aerial_win_pct` = `aerial_won / (aerial_won + aerial_lost)`
 - `shot_accuracy` = `ontarget_scoring_att / total_scoring_att`
 
-Census is ranked appearances, not `/football/players`. Closed seasons are a one-shot archive; the current season refreshes on the 06:00 UTC job.
+Census is ranked appearances, not `/football/players`. Closed seasons are a one-shot archive; the current season refreshes on both GitHub crons (06:00 and 18:00 UTC). Always fetch; write a new dated dump only when bytes change. A second snapshot on the same UTC day lands at `{YYYY-MM-DD}/{HHMM}/`.
 
 Shipped core/extended Opta fields are exported as `web/data/opta_{season}.json`, an object keyed by `player_code` (string) in the same shape as `style_{season}.json`. Counts are `o_{field}_total`; derived ratios are `o_{field}`. Null keys are omitted. Archive Opta columns stay mart-only. Nothing Opta is written to `players_{season}.json` or match logs.
 
@@ -202,11 +204,18 @@ Each counting stat has `*_total` and `*_p90` (`total / minutes * 90`). Per-90 ra
 
 Grain: `(season, gw, team_code)`.
 
-Sums of every `fact_player_gw` row with that GW `team_code`: `xg`, `xa`, `xgi`, `xgc`, `goals`, `assists`, `minutes`, `tackles`, `recoveries`, `clearances_blocks_interceptions`, `defensive_contribution`, `bps`, `saves`.
+Player-sum of things a player **does**: `xg`, `xa`, `xgi`, `goals`, `assists`, `minutes`, `tackles`, `recoveries`, `clearances_blocks_interceptions`, `defensive_contribution`, `bps`, `saves`. These are the share denominators.
+
+Things measured **about the team** while a player is on the pitch cannot be summed across the squad:
+
+- `goals_conceded` / `clean_sheets` come from `fact_fixture` scorelines
+- `xgc` is the opponent's attacking xG in those fixtures (player-sum xG of the other side), never FPL's per-player xGC
 
 `matches_played`: distinct played fixtures for that team in that GW (1 normally, 2 in a DGW). Taken from `fact_fixture` rows with a `result`. If fixture rows are missing but the team recorded minutes, falls back to 1.
 
 Requires `fact_player_gw.team_code`. That column is populated from 2020-21; 2016-17–2019-20 rows currently have NULL `team_code`, so this mart (and spell shares) start in 2020-21.
+
+Web: `web/data/teams_{season}.json` (2020-21 onward, keyed by `team_code`) and `web/data/fixtures_{season}.json` (every season, played and unplayed). Both fold under the FPL fetch in `status.json`. Current-season fixtures rewrite when a result or reschedule changes the payload; past seasons are frozen.
 
 ### `fact_player_season_metrics`
 
@@ -282,7 +291,8 @@ FPL `region` is a bare integer on bootstrap / `dim_player`. Names come from FPL 
 | `raw/live/{season}/gw{N}.json` | FPL event/{gw}/live |
 | `raw/plstats/{season}/appearances.json` | Pulse ranked appearances (verbatim). Closed seasons. |
 | `raw/plstats/{season}/players/{pulse_id}.json` | Pulse `/stats/player/{id}` season totals. Closed seasons; skip if present. |
-| `raw/plstats/{season}/{YYYY-MM-DD}/…` | Current-season dated snapshot; a new date is written only when bytes change. |
+| `raw/plstats/{season}/{YYYY-MM-DD}/…` | Current-season dated snapshot. Always fetched on both crons; written only when bytes change. Same-day second dump: `{YYYY-MM-DD}/{HHMM}/`. |
+| `raw/feed_fetch/{YYYY-MM-DD}/{HHMM}.json` | Per-feed `as_of` (last successful HTTP fetch, including no-op unchanged pulls). Written every `ingest/update.py` run. |
 
 ## Cite
 

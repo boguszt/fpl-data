@@ -130,6 +130,7 @@ IDENTITY_KEYS = {
     "n",
     "centroid",
     "z",
+    "raw",
     "c",
     "d",
     "c2",
@@ -142,6 +143,11 @@ IDENTITY_KEYS = {
     "start",
     "own",
     "end",
+    "opta",
+    "features_meta",
+    "format",
+    "pool_n",
+    "name",
 }
 
 LIVE_VASTAV_NOTE = (
@@ -1060,6 +1066,8 @@ def web_metric_keys(web_dir: Path | None = None) -> set[str]:
                     elif k == "features" and isinstance(v, list):
                         for feat in v:
                             keys.add(str(feat))
+                    elif k == "features_meta":
+                        continue
                     else:
                         walk(v, k)
                     continue
@@ -1070,7 +1078,9 @@ def web_metric_keys(web_dir: Path | None = None) -> set[str]:
                 walk(item, parent)
 
     for path in sorted(web_dir.glob("*.json")):
-        if path.name == "metrics_register.json":
+        if path.name in {"metrics_register.json", "status.json"}:
+            continue
+        if path.name.startswith("teams_") or path.name.startswith("fixtures_"):
             continue
         walk(json.loads(path.read_text(encoding="utf-8")))
     return keys

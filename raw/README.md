@@ -22,4 +22,4 @@ If the clone is missing, marts still build; `snap_player_day` then has only `own
 
 ## Pulse Opta (`raw/plstats/`)
 
-Undocumented `footballapi.pulselive.com` season totals (`Origin: https://www.premierleague.com`). Closed seasons are written once and never overwritten. The current season is dated and only stored when the payload bytes change. Census is ranked appearances, not `/football/players`.
+Undocumented `footballapi.pulselive.com` season totals (`Origin: https://www.premierleague.com`). Closed seasons are written once and never overwritten. The current season is fetched on both crons, dated, and only stored when the payload bytes change. Census is ranked appearances, not `/football/players`. `raw/feed_fetch/` records when each feed was last successfully fetched.

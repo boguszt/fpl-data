@@ -157,7 +157,8 @@ class FplClient:
             raise last_exc
         raise RuntimeError(f"GET failed: {url}")
 
-    def download_vaastav(self, current_season: str | None = None) -> None:
+    def download_vaastav(self, current_season: str | None = None) -> bool:
+        """Return True if the live season was fetched (HTTP 200), including unchanged bytes."""
         master = f"{VAASTAV_BASE}/data/master_team_list.csv"
         dest = RAW / "vaastav" / "master_team_list.csv"
         if not dest.exists():
@@ -167,9 +168,10 @@ class FplClient:
         else:
             print(f"skip existing {dest}")
 
+        fetched_live = False
         for season in SEASONS:
             if current_season and season == current_season:
-                self._refresh_live_season_vaastav(season)
+                fetched_live = self._refresh_live_season_vaastav(season)
                 continue
             for remote_rel, local_name in VAASTAV_SEASON_FILES:
                 dest = RAW / "vaastav" / season / local_name
@@ -183,16 +185,19 @@ class FplClient:
                     continue
                 write_bytes_immutable(dest, blob)
                 print(f"wrote {dest} ({len(blob)} bytes)")
+        return fetched_live
 
-    def _refresh_live_season_vaastav(self, season: str) -> None:
+    def _refresh_live_season_vaastav(self, season: str) -> bool:
         """Re-fetch mutating current-season CSVs. Dated, immutable; skip if bytes unchanged."""
         day, hhmm = stamp_parts()
+        fetched = False
         for remote_rel, local_name in VAASTAV_SEASON_FILES:
             url = f"{VAASTAV_BASE}/data/{season}/{remote_rel}"
             blob = self.get_bytes_or_none(url)
             if blob is None:
                 print(f"404 skip {url}")
                 continue
+            fetched = True
             latest = latest_vaastav_file(season, local_name)
             if latest is not None and hashlib.sha256(latest.read_bytes()).digest() == hashlib.sha256(blob).digest():
                 print(f"unchanged {season}/{local_name} (latest {latest})")
@@ -202,6 +207,7 @@ class FplClient:
                 dest = RAW / "vaastav" / season / day / hhmm / local_name
             write_bytes_immutable(dest, blob)
             print(f"wrote {dest} ({len(blob)} bytes)")
+        return fetched
 
     def download_understat(self) -> None:
         """Dump vaastav understat/ trees plus season-level id_dict.csv. No transform."""

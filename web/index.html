@@ -33,6 +33,37 @@ button,select,input{font:inherit;color:inherit}
 .masthead h1{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em}
 .masthead .sub{color:var(--ink-3);font-size:12px}
 .masthead .spacer{flex:1}
+.bellwrap{position:relative;display:inline-block;margin-left:2px}
+.bell{position:relative;width:24px;height:24px;border:1px solid var(--rule-2);
+  background:var(--paper);border-radius:4px;cursor:pointer;color:var(--ink-3);
+  padding:0;line-height:1}
+.bell:hover{border-color:var(--rule-3);color:var(--ink)}
+.bico{font-size:12px}
+.bdot{position:absolute;top:-3px;right:-3px;width:7px;height:7px;border-radius:50%;
+  background:var(--warn);border:1.5px solid var(--paper)}
+.bellpanel{position:absolute;top:28px;right:0;width:300px;background:var(--paper);
+  border:1px solid var(--rule-2);border-radius:5px;box-shadow:0 8px 26px rgba(20,24,30,.14);
+  display:none;z-index:60;overflow:hidden}
+.bellpanel.on{display:block}
+.bhead{padding:8px 11px 6px;border-bottom:1px solid var(--rule);font-size:12px;
+  font-weight:600;display:flex;align-items:baseline;gap:8px}
+.bgw{font-weight:400;color:var(--ink-3);font-size:11px;margin-left:auto}
+.brow{display:flex;align-items:baseline;gap:8px;padding:5px 11px;font-size:11.5px;
+  border-bottom:1px solid var(--rule)}
+.bk{flex:1;color:var(--ink-2);display:flex;flex-direction:column}
+.bn{font-size:9.5px;color:var(--ink-3)}
+.bv{font-family:var(--num);font-size:11px;color:var(--ink-3);white-space:nowrap}
+.brow.stale .bv{color:var(--warn);font-weight:600}
+.brow.stale .bk{color:var(--warn)}
+.bnote{padding:7px 11px;font-size:10.5px;line-height:1.5;color:var(--ink-2);
+  background:var(--obs);border-bottom:1px solid var(--rule)}
+.bmsg{padding:10px 11px;font-size:11px;line-height:1.5;color:var(--ink-3)}
+.bmsg code{font-family:var(--num);color:var(--ink-2)}
+.bfoot{display:flex;align-items:center;gap:8px;padding:6px 11px;font-size:10.5px;
+  color:var(--ink-3);background:var(--obs)}
+.bfoot button{margin-left:auto;border:1px solid var(--rule-2);background:var(--paper);
+  border-radius:3px;padding:1px 8px;cursor:pointer;font-size:10.5px;color:var(--ink-2)}
+.bfoot button:hover{border-color:var(--rule-3);color:var(--ink)}
 .freshness{font-size:11.5px;color:var(--ink-3);cursor:pointer;background:none;border:0;
   padding:2px 4px;border-radius:3px}
 .freshness:hover{color:var(--ink-2);background:var(--obs)}
@@ -50,6 +81,60 @@ button,select,input{font:inherit;color:inherit}
 .txtin{height:26px;padding:0 8px;border:1px solid var(--rule-2);border-radius:3px;
   background:var(--paper);width:150px;font-size:12.5px;outline:none}
 .txtin:focus{border-color:var(--ink-3)}
+.preset{border:1px solid var(--rule-2);background:var(--paper);color:var(--ink-2);
+  border-radius:4px;padding:2px 9px;cursor:pointer;font-size:11.5px}
+.preset:hover{border-color:var(--rule-3);color:var(--ink)}
+.preset[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.preset.ghost{border-style:dashed}
+.preset.loading{opacity:.5}
+.presets .spacer{flex:1}
+.chip.sel{display:inline-flex;align-items:center;max-width:132px}
+.chip.sel .cl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip.more{background:var(--obs);border-color:var(--rule-2);color:var(--ink-2);
+  font-family:var(--num);font-size:11px}
+.chip.more:hover{border-color:var(--rule-3);color:var(--ink)}
+.chips{max-width:none}
+.chip.sel .x{margin-left:5px;color:var(--ink-3);font-size:12px;flex:none}
+.chip.sel:hover .x{color:var(--ink)}
+.viewpanel{width:250px}
+.vrow{display:flex;align-items:center;gap:4px;padding:1px 4px 1px 9px}
+.vrow:hover{background:var(--obs)}
+.vname{flex:1;min-width:0;border:0;background:none;text-align:left;cursor:pointer;
+  font:inherit;font-size:12.5px;color:var(--ink);padding:4px 0;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.vdel{border:0;background:none;color:var(--ink-3);cursor:pointer;font-size:14px;
+  line-height:1;padding:0 5px;border-radius:3px}
+.vdel:hover{color:#9c3f3f;background:var(--paper)}
+.vsave{display:flex;gap:5px;padding:7px 8px;border-top:1px solid var(--rule);
+  background:var(--obs)}
+.vsave input{flex:1;min-width:0;height:24px;padding:0 7px;border:1px solid var(--rule-2);
+  border-radius:3px;font-size:12px;outline:none;background:var(--paper)}
+.vsave input:focus{border-color:var(--ink-3)}
+.vsave button{border:1px solid var(--rule-2);background:var(--paper);border-radius:3px;
+  padding:0 10px;cursor:pointer;font-size:11.5px;color:var(--ink-2)}
+.vsave button:hover{border-color:var(--rule-3);color:var(--ink)}
+#fViews .ms-btn{min-width:98px}
+.pickwrap{position:relative;display:inline-block;margin-left:4px}
+.pickpre{display:flex;gap:4px;flex-wrap:wrap;align-items:center;padding:6px 8px;
+  border-bottom:1px solid var(--rule);background:var(--obs)}
+.prelbl{font-size:9.5px;color:var(--ink-3);letter-spacing:.04em;margin-right:2px}
+.pickpre button{border:1px solid var(--rule-2);background:var(--paper);color:var(--ink-2);
+  border-radius:4px;padding:1px 8px;cursor:pointer;font-size:11px}
+.pickpre button:hover{border-color:var(--rule-3);color:var(--ink)}
+.pickpre button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.jump.plain.dense{font-size:11px;padding:2px 9px;margin-right:2px}
+.pickpanel{top:calc(100% + 4px);left:auto;right:0;width:330px;
+  position:absolute;z-index:40}
+.pickfam{display:flex;gap:2px;flex-wrap:wrap;padding:5px 8px;
+  border-bottom:1px solid var(--rule)}
+.pickfam button{border:0;background:none;padding:1px 7px;border-radius:9px;
+  cursor:pointer;font-size:10.5px;color:var(--ink-3)}
+.pickfam button:hover{color:var(--ink-2)}
+.pickfam button[aria-pressed=true]{background:var(--ink);color:#fff}
+.pickgrp{padding:5px 9px 2px;font-size:9.5px;letter-spacing:.04em;color:var(--ink-3);
+  font-weight:600}
+.pickcount{flex:1;font-size:11px;color:var(--ink-3);line-height:24px}
+.pickpanel .ms-list{max-height:280px}
 .range2{display:flex;align-items:center;gap:5px}
 .range2 input{width:52px;height:26px;padding:0 6px;border:1px solid var(--rule-2);
   border-radius:3px;background:var(--paper);font-size:12.5px;font-family:var(--num);outline:none}
@@ -59,7 +144,7 @@ button,select,input{font:inherit;color:inherit}
 tbody tr.avg td{position:sticky;top:calc(var(--h1) + var(--h2));z-index:2;
   background:#eef1f4;border-bottom:1px solid var(--rule-3);color:var(--ink-2);
   font-weight:500;height:28px}
-tbody tr.avg td.name{z-index:4;background:#eef1f4;font-family:var(--ui)}
+tbody tr.avg td.name{z-index:5;background:#eef1f4;font-family:var(--ui)}
 tbody tr.avg:hover td{filter:none}
 
 /* pinned rows */
@@ -158,11 +243,23 @@ tbody tr:hover .pin,.pin.on{opacity:1}
 .tablewrap{flex:1;overflow:auto;position:relative}
 table{border-collapse:separate;border-spacing:0;font-size:12.5px}
 thead th{position:sticky;background:var(--paper);z-index:3;font-weight:500;text-align:right;
-  white-space:nowrap;padding:0 9px;border-bottom:1px solid var(--rule-2)}
+  padding:0 9px;border-bottom:1px solid var(--rule-2)}
+thead tr.labels th{white-space:normal;line-height:1.2;vertical-align:bottom;
+  padding-bottom:4px;width:66px;min-width:66px;max-width:66px;
+  overflow:hidden;text-overflow:ellipsis}
+thead tr.labels th.name{width:auto;min-width:0;max-width:none}
+thead tr.labels th.frz{max-width:none}
+tbody td{width:66px;min-width:66px;max-width:66px}
+tbody td.name,tbody td.txt{width:auto;min-width:0;max-width:none}
+tbody td.frz{max-width:none}
+table{table-layout:fixed}
+thead tr.blocks th{white-space:nowrap}
 thead tr.blocks th{top:0;height:var(--h1);font-size:11px;font-weight:600;text-align:left;
   border-bottom:1px solid var(--rule);color:var(--ink-2)}
 thead tr.labels th{top:var(--h1);height:var(--h2);color:var(--ink-2);cursor:help;
   border-bottom:1px solid var(--rule-2)}
+:root{--h2:34px}
+body.dense{--h2:28px}
 thead th.obs{background:var(--obs)} thead th.der{background:var(--der)}
 thead th.obs.fplcol{background:var(--fpl)} thead th.der.fplcol{background:var(--fpl-der)}
 thead tr.labels th:hover{color:var(--ink)}
@@ -175,8 +272,69 @@ thead tr.labels th.sorted.k-dis{box-shadow:inset 0 -2px 0 var(--g-dis);color:var
 thead tr.labels th.sorted.k-base{box-shadow:inset 0 -2px 0 var(--ink);color:var(--ink)}
 th.name,td.name{position:sticky;left:0;z-index:4;text-align:left;border-right:1px solid var(--rule-2)}
 thead th.name{z-index:5;background:var(--paper)}
+.keystrip{display:flex;align-items:center;gap:5px 14px;flex-wrap:wrap;padding:5px 16px;
+  border-bottom:1px solid var(--rule);font-size:11px;color:var(--ink-3)}
+.keystrip.empty{display:none}
+.keytog{border:1px solid var(--rule-2);background:var(--paper);color:var(--ink-3);
+  border-radius:3px;padding:1px 8px;cursor:pointer;font-size:10.5px}
+.keytog:hover{border-color:var(--rule-3);color:var(--ink)}
+.keytog[aria-pressed=true]{background:var(--obs)}
+.keyitem{cursor:help;white-space:nowrap}
+.keyitem b{font-family:var(--num);color:var(--ink-2);font-weight:600;margin-right:5px}
+.jumpbar{display:flex;align-items:center;gap:5px;padding:6px 16px;flex-wrap:wrap;
+  border-bottom:1px solid var(--rule)}
+.jumpbar.empty{display:none}
+.jumpbar .spacer{flex:1}
+.jump{border:0;background:var(--obs);color:var(--ink-2);border-radius:9px;
+  padding:2px 9px;cursor:pointer;font-size:11px}
+.jump:hover{color:var(--ink)}
+.jump.c-att{background:var(--g-att-bg);color:var(--g-att)}
+.jump.c-def{background:var(--g-def-bg);color:var(--g-def)}
+.jump.c-gk{background:var(--g-gk-bg);color:var(--g-gk)}
+.jump.c-dis{background:var(--g-dis-bg);color:var(--g-dis)}
+.jump.c-fpl{background:var(--g-fpl-bg);color:var(--g-fpl)}
+.jump.c-pas{background:var(--g-pas-bg);color:var(--g-pas)}
+.jump.c-ter{background:var(--g-ter-bg);color:var(--g-ter)}
+.jump.c-due{background:var(--g-due-bg);color:var(--g-due)}
+.jump.plain{border:1px solid var(--rule-2);background:var(--paper)}
+.jump.plain[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* frozen identity block */
+th.frz,td.frz{position:sticky;z-index:4;background:var(--paper);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+thead th.frz{z-index:6}
+th.frzend,td.frzend{border-right:2px solid var(--rule-3)}
+thead th.frzspan{position:sticky;left:0;z-index:6;background:var(--paper)}
+tbody tr:hover td.frz{background:#f6f8fa}
+tbody tr.avg td.frz{background:#eef1f4;z-index:5}
+tbody tr.pinned td.frz{background:#fdf8e8;z-index:4}
+.tablewrap{scroll-behavior:auto;position:relative}
+.tablewrap.more::after{content:'';position:sticky;right:0;top:0;float:right;
+  width:26px;height:100%;pointer-events:none;
+  background:linear-gradient(to right,rgba(255,255,255,0),rgba(255,255,255,.92))}
+
+/* compact density */
+body.dense{--row:25px;--h1:19px;--h2:22px}
+body.dense tbody td{padding:0 6px;font-size:11.5px}
+body.dense thead th{padding:0 6px;font-size:11px}
+body.dense .trk{font-size:9px}
+thead tr.blocks th.fam{text-align:center;font-size:9.5px;letter-spacing:.05em;
+  font-weight:600;text-transform:uppercase}
+thead tr.blocks th.fam.k-att{background:var(--g-att-bg);color:var(--g-att)}
+thead tr.blocks th.fam.k-def{background:var(--g-def-bg);color:var(--g-def)}
+thead tr.blocks th.fam.k-gk{background:var(--g-gk-bg);color:var(--g-gk)}
+thead tr.blocks th.fam.k-dis{background:var(--g-dis-bg);color:var(--g-dis)}
+thead tr.blocks th.fam.k-fpl{background:var(--g-fpl-bg);color:var(--g-fpl)}
+thead tr.blocks th.fam.k-pas{background:var(--g-pas-bg);color:var(--g-pas)}
+thead tr.blocks th.fam.k-ter{background:var(--g-ter-bg);color:var(--g-ter)}
+thead tr.blocks th.fam.k-due{background:var(--g-due-bg);color:var(--g-due)}
+thead tr.blocks th.avband{background:var(--obs);color:var(--ink-3);font-size:9.5px;
+  letter-spacing:.05em;font-weight:600;text-transform:uppercase;text-align:left}
+th.famgap,td.famgap{border-left:1px solid var(--rule-2)}
+tbody td.sortcol{background:#f3f6f9}
+tbody tr:hover td.sortcol{background:#eef2f6}
+tbody tr.avg td.sortcol{background:#e7ebf0}
 th.gap,td.gap{border-left:1px solid var(--rule-3)}
-th.gapsrc,td.gapsrc{border-left:1px dashed var(--g-fpl-br)}
 tbody td{height:var(--row);padding:0 9px;white-space:nowrap;border-bottom:1px solid var(--rule);
   text-align:right;font-family:var(--num);font-variant-numeric:tabular-nums}
 tbody td.name,tbody td.txt{font-family:var(--ui);text-align:left}
@@ -329,6 +487,7 @@ td.club{color:var(--ink-2)}
 .radar{width:100%;max-width:310px;display:block;margin:0 auto}
 .radar .ring{fill:none;stroke:var(--rule);stroke-width:1}
 .radar .ring.outer{stroke:var(--rule-2)}
+.radar .avgring{stroke:var(--rule-3);stroke-dasharray:3 3}
 .radar .spoke{stroke:var(--rule);stroke-width:1}
 .radar .area{fill:var(--rc);fill-opacity:.17;stroke:var(--rc);stroke-width:1.8;
   stroke-linejoin:round}
@@ -337,6 +496,23 @@ td.club{color:var(--ink-2)}
 .radar .rval{font-family:var(--num);font-size:10.5px;fill:var(--ink-2);font-weight:600}
 .radar .rraw{font-weight:400;fill:var(--ink-3);font-size:9px}
 .rnote b{font-weight:600;color:var(--ink-2)}
+:root{--g-pas:#1d6b6b;--g-pas-bg:#dceded;--g-pas-br:#9fc9c9;
+  --g-ter:#7a5a1e;--g-ter-bg:#f4ecdb;--g-ter-br:#d4bd90;
+  --g-due:#5d4a7a;--g-due-bg:#e9e4f2;--g-due-br:#b8aacd;}
+.c-pas[aria-pressed=true]{background:var(--g-pas-bg);border-color:var(--g-pas-br);color:var(--g-pas);font-weight:500}
+.c-ter[aria-pressed=true]{background:var(--g-ter-bg);border-color:var(--g-ter-br);color:var(--g-ter);font-weight:500}
+.c-due[aria-pressed=true]{background:var(--g-due-bg);border-color:var(--g-due-br);color:var(--g-due);font-weight:500}
+.tab.t-pas[aria-selected=true]{border-bottom-color:var(--g-pas);color:var(--g-pas)}
+.tab.t-ter[aria-selected=true]{border-bottom-color:var(--g-ter);color:var(--g-ter)}
+.tab.t-due[aria-selected=true]{border-bottom-color:var(--g-due);color:var(--g-due)}
+thead tr.labels th.sorted.k-pas{box-shadow:inset 0 -2px 0 var(--g-pas);color:var(--g-pas)}
+thead tr.labels th.sorted.k-ter{box-shadow:inset 0 -2px 0 var(--g-ter);color:var(--g-ter)}
+thead tr.labels th.sorted.k-due{box-shadow:inset 0 -2px 0 var(--g-due);color:var(--g-due)}
+td.rank.top.k-pas{color:var(--g-pas)} td.rank.top.k-ter{color:var(--g-ter)}
+td.rank.top.k-due{color:var(--g-due)}
+.dsec.s-pas .dsum{color:var(--g-pas)} .dsec.s-ter .dsum{color:var(--g-ter)}
+.dsec.s-due .dsum{color:var(--g-due)}
+.tab.loading{opacity:.5}
 #drawer.wide{width:1080px}
 .slotbtn.rm:hover{background:#fdf1f1}
 .slotbtn.rm:hover .halo{box-shadow:inset 0 0 0 1.5px #d89a9a}
@@ -392,6 +568,72 @@ td.club{color:var(--ink-2)}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sval{width:74px;flex:none;text-align:right}
 .srk{font-size:9.5px;color:var(--ink-3);margin-left:3px;font-weight:400}
+.ptabs{display:flex;gap:1px;flex-wrap:wrap;border-bottom:1px solid var(--rule-2);
+  margin:0 0 6px}
+.ptab{background:none;border:0;border-bottom:2px solid transparent;padding:6px 8px;
+  cursor:pointer;color:var(--ink-3);font-size:11.5px;font-weight:500}
+.ptab:hover{color:var(--ink-2)}
+.ptab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink)}
+.ptab.t-att[aria-selected=true]{color:var(--g-att);border-bottom-color:var(--g-att)}
+.ptab.t-def[aria-selected=true]{color:var(--g-def);border-bottom-color:var(--g-def)}
+.ptab.t-gk[aria-selected=true]{color:var(--g-gk);border-bottom-color:var(--g-gk)}
+.ptab.t-dis[aria-selected=true]{color:var(--g-dis);border-bottom-color:var(--g-dis)}
+.ptab.t-fpl[aria-selected=true]{color:var(--g-fpl);border-bottom-color:var(--g-fpl)}
+.ptab.t-pas[aria-selected=true]{color:var(--g-pas);border-bottom-color:var(--g-pas)}
+.ptab.t-ter[aria-selected=true]{color:var(--g-ter);border-bottom-color:var(--g-ter)}
+.ptab.t-due[aria-selected=true]{color:var(--g-due);border-bottom-color:var(--g-due)}
+.ovhead{display:flex;align-items:center;gap:8px;margin:9px 0 4px;font-size:10.5px;
+  font-weight:600}
+.ovhead:first-child{margin-top:2px}
+.ovhead.hi{color:#12705a}
+.ovhead.lo{color:#9c3f3f}
+.ovrule{flex:1;height:1px;background:var(--rule)}
+.ovavail{display:flex;gap:14px;flex-wrap:wrap;margin-top:11px;padding-top:8px;
+  border-top:1px solid var(--rule);font-family:var(--num);
+  font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--pa)}
+.ovavail.b{margin-top:2px;padding-top:2px;border-top:0;color:var(--pb)}
+.ovavail .k{color:var(--ink-3);font-family:var(--ui);font-size:10px;margin-right:4px}
+.ovrest{margin-top:4px}
+.ovrest>summary{cursor:pointer;list-style:none;font-size:10.5px;color:var(--ink-3);
+  padding:4px 2px}
+.ovrest>summary::-webkit-details-marker{display:none}
+.ovrest>summary::before{content:"\25B8 ";font-size:8px}
+.ovrest[open]>summary::before{content:"\25BE "}
+.ovrest>summary:hover{color:var(--ink-2)}
+.stylehead{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.zrow{height:22px}
+.zval{width:40px;color:var(--ink-2)}
+.zval.b{color:var(--pb);text-align:left;padding-left:7px}
+.zrow .zval:first-of-type{color:var(--pa)}
+.ztrack{flex:1;min-width:60px;height:13px;background:#eceff3;border-radius:2px;
+  position:relative;overflow:hidden}
+.zmid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--rule-3)}
+.zb{position:absolute;height:5px;border-radius:1px}
+.zb.a{top:1px;background:var(--pa)}
+.zb.b{bottom:1px;background:var(--pb)}
+.arch{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap}
+.archlab{font-size:11px;font-weight:600;color:var(--pa);background:var(--pa-soft);
+  border-radius:3px;padding:1px 7px}
+.pane.cmping .archlab{color:var(--pb);background:var(--pb-soft)}
+.archsec{font-size:10.5px;color:var(--ink-3);font-style:italic}
+.simhead{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.simhead .rseg button{padding:2px 8px;font-size:10.5px}
+.simlist{display:flex;flex-direction:column}
+.simrow{display:flex;align-items:center;gap:7px;width:100%;border:0;background:none;
+  padding:3px 2px;cursor:pointer;font:inherit;text-align:left;
+  border-bottom:1px solid var(--rule)}
+.simrow:last-child{border-bottom:0}
+.simrow:hover{background:var(--obs)}
+.simname{flex:1;min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.simpos{font-size:9.5px;color:var(--ink-3);font-family:var(--num);width:24px;flex:none}
+.simarch{font-size:9.5px;color:var(--ink-3);width:96px;flex:none;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.simval{font-family:var(--num);font-variant-numeric:tabular-nums;font-size:11.5px;
+  color:var(--ink-2);width:24px;text-align:right;flex:none}
+.simval.faint{color:var(--ink-3)}
+.simval.faint::after{content:'\2193';font-size:8px;margin-left:1px}
+.simval.vivid::after{content:'\2191';font-size:8px;margin-left:1px}
 .sval.r{text-align:right}
 .srow2 .sval:last-child{text-align:left}
 .srow2 .sval:last-child .srk{margin:0 0 0 3px}
@@ -444,9 +686,10 @@ details.dsec[open]{padding-bottom:9px}
 .dsec.s-dis .dsum{color:var(--g-dis)}
 .rtoggle{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:8px}
 .rseg button{padding:3px 11px}
-.rhelp{width:15px;height:15px;border-radius:50%;border:1px solid var(--rule-2);
+.rhelp{display:inline-block;width:15px;height:15px;border-radius:50%;border:1px solid var(--rule-2);
   background:var(--paper);color:var(--ink-3);font-size:10px;line-height:1;cursor:help;
-  margin-left:7px;padding:0;font-family:var(--ui)}
+  margin-left:7px;padding:0;font-family:var(--ui);text-align:center;
+  line-height:13px;vertical-align:1px}
 .rhelp:hover{border-color:var(--ink-3);color:var(--ink)}
 .dsec h3{align-items:center}
 /* compare */
@@ -475,8 +718,10 @@ details.dsec[open]{padding-bottom:9px}
   transition:opacity .09s;box-shadow:0 3px 14px rgba(0,0,0,.22)}
 #tip.on{opacity:1}
 #tip b{display:block;margin-bottom:3px}
-#tip .src{display:block;margin-top:6px;padding-top:5px;border-top:1px solid #333a44;
-  color:#98a3b4;font-size:11px}
+#tip .src{display:block;margin-top:7px;padding-top:6px;border-top:1px solid #333a44;
+  color:#98a3b4;font-size:11px;line-height:1.5}
+#tip .pvk{color:#6f7d8f;font-size:10px;letter-spacing:.03em;margin-right:4px}
+#tip code{font-family:var(--num);font-size:10px;color:#b9c4d2}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 :focus-visible{outline:2px solid var(--g-def);outline-offset:1px}
 </style>
@@ -486,12 +731,19 @@ details.dsec[open]{padding-bottom:9px}
 <div class="masthead">
   <h1>Player table</h1><span class="sub" id="scope"></span>
   <span class="spacer"></span>
+  <button class="jump plain dense" id="denseBtn" title="Compact rows">Compact</button>
   <button class="freshness" id="freshness" title="Reload"></button>
+  <div class="bellwrap">
+    <button class="bell" id="bellBtn" aria-label="Data status"><span class="bico">◎</span>
+      <span class="bdot" id="bellDot" hidden></span></button>
+    <div class="bellpanel" id="bellPanel"></div>
+  </div>
 </div>
 <div class="banner" id="banner" hidden></div>
 
 <div class="controls">
   <div class="filters">
+    <div class="field"><label>View</label><div id="fViews"></div></div>
     <div class="field"><label>Search</label>
       <input type="text" id="fQ" class="txtin" placeholder="Player name"></div>
     <div class="field"><label>Seasons</label><div id="fSeason"></div></div>
@@ -516,9 +768,12 @@ details.dsec[open]{padding-bottom:9px}
     <button class="chip toggle rankbtn" id="rankChip">Rank</button>
     <span class="lbl" style="margin-left:10px">Metrics</span>
     <span class="chips" id="metricChips"></span>
+    <span class="pickwrap" id="presets"></span>
   </div>
 </div>
 
+<div class="jumpbar" id="jumpbar"></div>
+<div class="keystrip" id="keystrip"></div>
 <div class="tablewrap" id="tablewrap">
   <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
   <div class="empty" id="empty" hidden></div>
@@ -599,18 +854,36 @@ let METRICS=[
   desc:'Influence, Creativity and Threat rolled into one index. Contains nothing the three separate columns do not.'},
 ];
 const M=k=>METRICS.find(m=>m.key===k);
-const GROUPS=['Attacking','Defensive','Goalkeeping','Discipline','Fantasy'];
-const KC={Attacking:'k-att',Defensive:'k-def',Goalkeeping:'k-gk',Discipline:'k-dis',Fantasy:'k-fpl'};
-const CC={Attacking:'c-att',Defensive:'c-def',Goalkeeping:'c-gk',Discipline:'c-dis',Fantasy:'c-fpl'};
-const SC={Attacking:'s-att',Defensive:'s-def',Goalkeeping:'s-gk',Discipline:'s-dis',Fantasy:'s-fpl'};
+const GROUPS=['Attacking','Defensive','Goalkeeping','Discipline','Fantasy',
+  'Passing','Territory','Duels'];
+const KC={Attacking:'k-att',Defensive:'k-def',Goalkeeping:'k-gk',Discipline:'k-dis',Fantasy:'k-fpl',Passing:'k-pas'};
+const CC={Attacking:'c-att',Defensive:'c-def',Goalkeeping:'c-gk',Discipline:'c-dis',Fantasy:'c-fpl',Passing:'c-pas'};
+const SC={Attacking:'s-att',Defensive:'s-def',Goalkeeping:'s-gk',Discipline:'s-dis',Fantasy:'s-fpl',Passing:'s-pas'};
 const TC={Attacking:'t-att',Defensive:'t-def',Goalkeeping:'t-gk',Discipline:'t-dis',
-  Fantasy:'t-fpl',All:'t-all'};
+  Fantasy:'t-fpl',Passing:'t-pas',All:'t-all'};
 /* The Fantasy tab is a view, not a group: everything that moves the points
    total, wherever it lives, followed by FPL's own indices. */
 const FANTASY_SET=['points','netpoints','bonus','bps','goals','assists','cs','defcon',
   'saves','pensaved','penmissed','yellow','red','og','influence','creativity','threat','ict'];
 const SRC={match:'Match data, from the Premier League\u2019s official feed.',
   fpl:'Fantasy Premier League scoring layer — a game convention, not a football measurement.'};
+const FEEDNAME={fpl:'Fantasy Premier League API',opta:'Premier League (Opta)',
+  vaastav:'vaastav archive',fplcache:'fplcache snapshots',derived:'computed here'};
+/* Everything the register knows about a metric, for the hover. */
+function provenance(m){
+  if(!m)return '';
+  const bits=[];
+  if(m.definition&&m.definition!==m.desc)bits.push(m.definition);
+  if(m.derived_from)bits.push(`<span class="pvk">Calculated as</span> ${m.derived_from}`);
+  if(m.caveat)bits.push(`<span class="pvk">Watch out</span> ${m.caveat}`);
+  if(m.coverage_note)bits.push(`<span class="pvk">Coverage</span> ${m.coverage_note}`);
+  else if(m.first_season)bits.push(`<span class="pvk">Coverage</span> from ${m.first_season}`+
+    (m.last_season?` to ${m.last_season}`:''));
+  const feed=FEEDNAME[m.feed]||(m.src==='fpl'?FEEDNAME.fpl:FEEDNAME.opta);
+  bits.push(`<span class="pvk">Source</span> ${feed}`+
+    (m.raw_field?` · <code>${m.raw_field}</code>`:''));
+  return bits.length?`<span class="src">${bits.join('<br>')}</span>`:'';
+}
 
 const FRAME_DEFS=[
  {id:'total',label:'Total',block:'obs',
@@ -666,7 +939,7 @@ const clubBar=(name,lg)=>{
 };
 
 const state={seasons:[],pos:[],club:[],nat:[],minMinutes:600,mpaMin:0,
-  q:'',ageMin:null,ageMax:null,pins:[],cmp:null,cmpFrame:'adj90',logOpen:null,logSeasons:[],radars:[],radarMode:'perf',
+  q:'',extra:[],pickFam:'All',dense:false,showKey:false,ageMin:null,ageMax:null,pins:[],cmp:null,cmpFrame:'adj90',profTab:'Overview',simSamePos:true,logOpen:null,logSeasons:[],radars:[],radarMode:'perf',
   tab:'Attacking',frames:['total','adj90'],off:[],rank:false,
   sort:'minutes',page:0,sel:null};
 
@@ -689,14 +962,20 @@ function readHash(){
   state.radars=L('rad');
   if(p.get('rmode'))state.radarMode=p.get('rmode');
   if(p.get('cfr'))state.cmpFrame=p.get('cfr');
+  if(p.get('pt'))state.profTab=p.get('pt');
+  state.dense=p.get('dense')==='1';
+  state.showKey=p.get('key')==='1';
+  if(p.get('sp'))state.simSamePos=p.get('sp')==='1';
   if(p.get('tab'))state.tab=p.get('tab');
   if(p.has('fr'))state.frames=L('fr');
   state.off=L('off');
+  state.extra=L('ex');
+  if(p.get('pf'))state.pickFam=p.get('pf');
   state.rank=p.get('rank')==='1';
   if(p.get('sort'))state.sort=p.get('sort');
   if(p.get('page'))state.page=+p.get('page');
 }
-function writeHash(){
+function hashString(){
   const p=new URLSearchParams();
   p.set('sn',state.seasons.join(','));
   if(state.pos.length)p.set('pos',state.pos.join(','));
@@ -712,15 +991,97 @@ function writeHash(){
   if(state.radars.length)p.set('rad',state.radars.join(','));
   if(state.radarMode!=='perf')p.set('rmode',state.radarMode);
   if(state.cmpFrame!=='adj90')p.set('cfr',state.cmpFrame);
+  if(state.profTab!=='Overview')p.set('pt',state.profTab);
+  if(state.dense)p.set('dense','1');
+  if(state.showKey)p.set('key','1');
+  if(!state.simSamePos)p.set('sp','0');
   p.set('tab',state.tab);p.set('fr',state.frames.join(','));
   if(state.off.length)p.set('off',state.off.join(','));
+  if((state.extra||[]).length)p.set('ex',state.extra.join(','));
+  if(state.pickFam!=='All')p.set('pf',state.pickFam);
   if(state.rank)p.set('rank','1');
   p.set('sort',state.sort);
   if(state.page)p.set('page',state.page);
-  history.replaceState(null,'','#'+p.toString());
+  return p.toString();
+}
+const writeHash=()=>history.replaceState(null,'','#'+hashString());
+
+/* ---------- saved views ---------- */
+/* The hash already encodes the entire configuration, so a saved view is just
+   a name against a hash string. Nothing new has to be serialised. */
+const VIEWS_KEY='fpl:views';
+const loadViews=()=>{try{return JSON.parse(localStorage.getItem(VIEWS_KEY))||[];}
+  catch(e){return [];}};
+const saveViews=v=>{try{localStorage.setItem(VIEWS_KEY,JSON.stringify(v));}catch(e){}};
+
+/* Push state back into the controls that hold their own DOM value. */
+function syncControls(){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  const txt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('fMin',state.minMinutes);txt('fMinVal',state.minMinutes);
+  set('fMpa',state.mpaMin);txt('fMpaVal',state.mpaMin);
+  set('fQ',state.q);
+  set('fAgeMin',state.ageMin??'');set('fAgeMax',state.ageMax??'');
+  document.body.classList.toggle('dense',!!state.dense);
+}
+async function applyView(hash){
+  location.hash='#'+hash;
+  readHash();
+  if(OPTA_GROUPS.includes(state.tab)||
+     (state.extra||[]).some(k=>k.startsWith('o_')))await ensureOpta();
+  buildFilters();syncControls();buildTabs();buildFrames();render();
+  buildViews();
 }
 
-const store={manifest:null,seasons:{},logs:{},demo:false};
+function buildViews(){
+  const host=document.getElementById('fViews');
+  if(!host)return;
+  const views=loadViews();
+  host.className='ms';
+  host.innerHTML=
+    `<button class="ms-btn" id="viewBtn"><span>`+
+    (views.length?`${views.length} saved`:'Views')+
+    `</span><span class="car">▾</span></button>`+
+    `<div class="ms-panel viewpanel">`+
+    (views.length?`<div class="ms-list">`+views.map((v,i)=>
+      `<div class="vrow"><button class="vname" data-view="${i}" `+
+      `title="Load this view">${v.name}</button>`+
+      `<button class="vdel" data-vdel="${i}" title="Delete">×</button></div>`).join('')+
+      `</div>`
+      :`<div class="ms-none">No saved views yet. Set up the filters and metrics `+
+       `you want, then save them here.</div>`)+
+    `<div class="vsave"><input type="text" id="vName" placeholder="name this view…">`+
+    `<button id="vAdd">Save</button></div></div>`;
+
+  const btn=document.getElementById('viewBtn'),panel=host.querySelector('.ms-panel');
+  btn.onclick=e=>{
+    e.stopPropagation();
+    const open=panel.classList.contains('on');
+    document.querySelectorAll('.ms-panel.on,.bellpanel.on').forEach(x=>x.classList.remove('on'));
+    if(!open){panel.classList.add('on');document.getElementById('vName').focus();}};
+  panel.onclick=e=>e.stopPropagation();
+
+  host.querySelectorAll('[data-view]').forEach(b=>{
+    b.onclick=()=>{panel.classList.remove('on');applyView(views[+b.dataset.view].hash);};});
+  host.querySelectorAll('[data-vdel]').forEach(b=>{
+    b.onclick=()=>{const v=loadViews();v.splice(+b.dataset.vdel,1);saveViews(v);
+      buildViews();document.querySelector('#fViews .ms-panel').classList.add('on');};});
+
+  const add=()=>{
+    const el=document.getElementById('vName');
+    const name=(el.value||'').trim();
+    if(!name)return;
+    const v=loadViews();
+    const at=v.findIndex(x=>x.name===name);
+    const entry={name,hash:hashString(),saved:new Date().toISOString()};
+    if(at>=0)v[at]=entry;else v.push(entry);
+    saveViews(v);buildViews();
+    document.querySelector('#fViews .ms-panel').classList.add('on');};
+  document.getElementById('vAdd').onclick=add;
+  document.getElementById('vName').onkeydown=e=>{if(e.key==='Enter')add();};
+}
+
+const store={manifest:null,seasons:{},logs:{},style:{},clusters:null,status:null,demo:false};
 async function getJSON(f){
   const r=await fetch(DATA+f,{cache:'no-store'});
   if(!r.ok)throw new Error(f+' '+r.status);
@@ -738,8 +1099,14 @@ async function load(){
   try{
     store.manifest=await getJSON('manifest.json');
     try{METRICS=normalise(await getJSON('metrics.json'));}catch(e){}
+    try{mergeRegister(await getJSON('metrics_register.json'));}catch(e){}
     for(const s of store.manifest.seasons)
       store.seasons[s.season]=await getJSON(`players_${s.season}.json`);
+    try{store.status=await getJSON('status.json');}catch(e){}
+    try{store.clusters=await getJSON('clusters.json');}catch(e){}
+    if(store.clusters)for(const s of store.manifest.seasons){
+      try{store.style[s.season]=await getJSON(`style_${s.season}.json`);}catch(e){}
+    }
   }catch(err){
     store.demo=true;
     store.manifest={seasons:[{season:'2025-26'}],generated_at:new Date().toISOString()};
@@ -867,51 +1234,185 @@ function aggregate(){
 }
 
 /* metrics available in the current tab, given the position filter */
+/* Column order per view, stated rather than inherited from whatever order the
+   register emitted. Metrics listed here lead their tab; anything else follows
+   in register order. Ids that do not exist are ignored, so this is safe to
+   list optimistically. */
+const PRIORITY={
+  Attacking:['goals','xg','expected goals','assists','goal assist','xa',
+    'expected assists','xgi','expected goal involvements','o_total_scoring_att',
+    'o_ontarget_scoring_att','o_big_chance_created','o_big_chance_missed',
+    'o_total_att_assist','o_att_ibox_goal','o_hit_woodwork'],
+  Defensive:['defcon','defensive contribution','tackles','tackle','cbi',
+    'recoveries','ball recovery','interception','clearance','o_total_tackle','o_won_tackle',
+    'o_interception','o_effective_clearance','o_ball_recovery','o_blocked_scoring_att',
+    'o_poss_won_att_3rd','o_poss_won_mid_3rd','o_poss_won_def_3rd'],
+  Goalkeeping:['saves','cs','gc','xgc','pensaved','o_saves','o_big_chance_saves',
+    'o_goals_conceded_ibox','o_goals_conceded_obox'],
+  Discipline:['yellow','red','og','penmissed','o_fouls','o_was_fouled','o_total_offside'],
+  Fantasy:['points','netpoints','bonus','bps','goals','assists','cs','defcon',
+    'saves','pensaved','penmissed','yellow','red','og','influence','creativity',
+    'threat','ict'],
+  Passing:['o_total_pass','total pass','passes','o_accurate_pass','accurate pass','o_fwd_pass','o_backward_pass',
+    'o_total_long_balls','o_accurate_long_balls','o_total_cross','o_accurate_cross',
+    'o_total_through_ball','o_accurate_through_ball','o_total_final_third_passes',
+    'o_successful_final_third_passes','o_total_chipped_pass','o_total_layoffs',
+    'o_total_flick_on','o_total_throws'],
+  Territory:['o_touches','o_touches_in_final_third','o_touches_in_opp_box','o_carries',
+    'o_progressive_carries','o_final_third_entries','o_pen_area_entries',
+    'o_successful_final_third_entries','o_successful_pen_area_entries',
+    'o_put_through','o_dispossessed','o_unsuccessful_touch'],
+  Duels:['o_duel_won','o_duel_lost','o_aerial_won','o_aerial_lost','o_total_contest',
+    'o_won_contest','o_challenge_lost','o_times_tackled','o_shield_ball_oop'],
+};
+let REG_INDEX=new Map(),REG_N=0;
+function metricOrder(m,group){
+  const list=PRIORITY[group||m.group]||[];
+  let i=list.indexOf(m.key);
+  if(i<0)i=list.indexOf(norm(m.label));
+  if(i>=0)return i;
+  if(REG_N!==METRICS.length){        /* rebuild when the register adds metrics */
+    REG_INDEX=new Map();METRICS.forEach((x,n)=>REG_INDEX.set(x.key,n));
+    REG_N=METRICS.length;
+  }
+  return 1000+(REG_INDEX.get(m.key)??999);
+}
+const byPriority=(group)=>(a,b)=>metricOrder(a,group)-metricOrder(b,group);
+
+/* Two metrics with the same label in one group are the same concept measured
+   by two feeds. Keep the FPL one — it is core, it is what the fantasy views
+   use, and one Goals column beats two that disagree. */
+function dedupeConcepts(list){
+  const seen=new Map();
+  for(const m of list){
+    const c=norm(m.label);
+    const prev=seen.get(c);
+    if(!prev){seen.set(c,m);continue;}
+    const prevFpl=prev.feed==='fpl'||prev.src==='fpl'||!prev.key.startsWith('o_');
+    const curFpl=m.feed==='fpl'||m.src==='fpl'||!m.key.startsWith('o_');
+    if(curFpl&&!prevFpl)seen.set(c,m);
+  }
+  return [...seen.values()];
+}
 function groupMetrics(g){
-  return g==='All'?METRICS
+  const list=g==='All'?METRICS.slice()
     :g==='Fantasy'?FANTASY_SET.map(M).filter(Boolean)
     :METRICS.filter(m=>m.group===g);
+  return g==='Fantasy'?list:dedupeConcepts(list).sort(byPriority(g));
 }
 function tabMetrics(){
   const pos=state.pos.length?state.pos:ALLPOS;
   return groupMetrics(state.tab).filter(m=>pos.some(p=>m.pos.includes(p)));
 }
-const activeStats=()=>tabMetrics().filter(m=>!state.off.includes(m.key)).map(m=>m.key);
+const activeStats=()=>{
+  const extra=(state.extra||[]).map(M).filter(Boolean);
+  const base=tabMetrics().filter(m=>!state.off.includes(m.key));
+  const seen=new Set(base.map(m=>m.key));
+  return base.concat(extra.filter(m=>!seen.has(m.key))).map(m=>m.key);
+};
 const activeFrames=()=>FRAME_DEFS.filter(f=>state.frames.includes(f.id));
 
 const rankHost=()=>state.frames.includes('adj90')?'adj90'
   :(FRAME_DEFS.find(f=>state.frames.includes(f.id))||{}).id;
+/* Identity columns stay put while the metrics scroll. Offsets are fixed so the
+   sticky lefts can be computed without measuring the DOM. */
+const FRZ_W=[132,84,40,38,56];
+const frzStyle=i=>`left:${FRZ_W.slice(0,i).reduce((a,b)=>a+b,0)}px;`+
+  `min-width:${FRZ_W[i]}px;max-width:${FRZ_W[i]}px`;
+const frzCls=c=>c.frz==null?'':` frz${c.frzlast?' frzend':''}`;
+
+/* ---------- column abbreviations ---------- */
+/* Register labels are prose, written to be read in a tooltip. Column headers
+   need codes. These are derived mechanically from the metric id so a metric we
+   have never seen still gets something short and predictable. */
+const ABBR_EXACT={
+  goals:'Goals',assists:'Asts',xg:'xG',xa:'xA',xgi:'xGI',
+  tackles:'Tkl',recoveries:'Rec',cbi:'CBI',defcon:'DefC',
+  saves:'Saves',gc:'GC',xgc:'xGC',cs:'CS',pensaved:'PenSv',penmissed:'PenMs',
+  points:'Pts',netpoints:'NetPts',bonus:'Bonus',bps:'BPS',
+  influence:'Infl',creativity:'Creat',threat:'Threat',ict:'ICT',
+  yellow:'YC',red:'RC',og:'OG',
+};
+const ABBR_TOKENS=[
+  ['ontarget','OnT'],['scoring_att','Shots'],['att_assist','KeyP'],
+  ['big_chance','BigCh'],['progressive','Prog'],['final_third','F3'],
+  ['pen_area','Box'],['opp_box','OppBox'],['woodwork','Wdwk'],
+  ['in_final_third','F3'],['in_opp_box','OppBox'],['created','Cr'],
+  ['interception','Int'],['clearance','Clr'],['recovery','Rec'],
+  ['possession','Poss'],['dispossessed','Disp'],['unsuccessful','Unsucc'],
+  ['successful','Succ'],['accurate','Acc'],['attempted','Att'],
+  ['through_ball','ThrB'],['long_balls','LongB'],['long_ball','LongB'],
+  ['chipped','Chip'],['flick_on','Flick'],['layoffs','Layoff'],
+  ['pull_back','PullB'],['backward','Bwd'],['forward','Fwd'],['fwd','Fwd'],
+  ['contest','TakeOn'],['duel','Duel'],['aerial','Aerial'],['tackle','Tkl'],
+  ['carries','Car'],['carry','Car'],['touches','Tch'],['touch','Tch'],
+  ['entries','Ent'],['conceded','Cncd'],['blocked','Blk'],['saved','Sv'],
+  ['corner','Crnr'],['freekick','FK'],['offside','Offs'],['fouls','Fouls'],
+  ['fouled','Fouled'],['cross','Cross'],['pass','Pass'],['goal','Gl'],
+  ['shot','Sht'],['ibox','inBox'],['obox','outBox'],['zone','Zn'],
+  ['share','%'],['total','' ],['won','Won'],['lost','Lost'],['miss','Miss'],
+  ['post','Post'],['passes','Pass'],['att','Att'],
+];
+const abbrCache=new Map();
+function abbr(m){
+  if(abbrCache.has(m.key))return abbrCache.get(m.key);
+  let out=ABBR_EXACT[m.key];
+  if(!out){
+    let k=m.key.replace(/^o_/,'');
+    const parts=[];
+    let guard=0;
+    while(k.length&&guard++<12){
+      const hit=ABBR_TOKENS.find(([t])=>k.startsWith(t+'_')||k===t);
+      if(hit){parts.push(hit[1]);k=k.slice(hit[0].length).replace(/^_/,'');continue;}
+      const seg=k.split('_')[0];
+      parts.push(seg.charAt(0).toUpperCase()+seg.slice(1));
+      k=k.slice(seg.length).replace(/^_/,'');
+    }
+    out=parts.filter(Boolean).join(' ');
+    if(out.length>16)out=out.slice(0,15)+'…';
+  }
+  abbrCache.set(m.key,out);
+  return out;
+}
+const FRAME_SUFFIX={total:'',p90:'/90',app:'/app',adj90:' adj',share:' sh'};
+
 function columns(){
   const stats=activeStats(),frames=activeFrames();
   const cols=[
-   {id:'web_name',label:'Player',block:'id',type:'name'},
-   {id:'team_name',label:'Club',block:'id',type:'txt',cls:'club'},
-   {id:'position',label:'Pos',block:'id',type:'txt'},
-   {id:'age',label:'Age',block:'id',fmt:'int'},
-   {id:'minutes',label:'Min',block:'obs',fmt:'int',gap:true},
-   {id:'appearances',label:'Apps',block:'obs',fmt:'int'},
+   {id:'web_name',label:'Player',block:'id',type:'name',frz:0},
+   {id:'team_name',label:'Club',block:'id',type:'txt',cls:'club',frz:1},
+   {id:'position',label:'Pos',block:'id',type:'txt',frz:2},
+   {id:'age',label:'Age',block:'id',fmt:'int',frz:3},
+   {id:'minutes',label:'Min',block:'id',fmt:'int',frz:4,frzlast:true},
+   {id:'appearances',label:'Apps',block:'obs',fmt:'int',famgap:true},
    {id:'starts',label:'Starts',block:'obs',fmt:'int'},
    {id:'apps_60',label:'60+',block:'obs',fmt:'int'},
    {id:'min_per_app',label:'Min/app',block:'obs',fmt:'int'},
-   {id:'minutes_share',label:'Min %',block:'der',fmt:'pct',gap:true}];
-  const order=METRICS.map(m=>m.key);
+   {id:'minutes_share',label:'Min %',block:'der',fmt:'pct'}];
+  const famSeen=new Set();
   const sorted=stats.slice().sort((a,b)=>{
-    const fa=M(a).src==='fpl',fb=M(b).src==='fpl';
+    const ma=M(a),mb=M(b);
+    const fa=ma.src==='fpl',fb=mb.src==='fpl';
     if(fa!==fb)return fa?1:-1;
-    return order.indexOf(a)-order.indexOf(b);});
-  let firstFpl=true;
+    return metricOrder(ma,state.tab)-metricOrder(mb,state.tab);});
   for(const k of sorted){
     const m=M(k),isFpl=m.src==='fpl';
     let first=true;
     for(const f of frames){
       if(f.id==='share'&&!m.share)continue;
-      cols.push({id:k+'_'+f.id,label:frames.length>1?`${m.label} ${f.label}`:m.label,
+      cols.push({id:k+'_'+f.id,
+        label:abbr(m)+(frames.length>1?(FRAME_SUFFIX[f.id]??' '+f.label):''),
+        full:m.label+(frames.length>1?` — ${f.tip?f.tip[0]:f.label}`:''),
         block:f.block,metric:k,frame:f.id,fplcol:isFpl,
         fmt:f.id==='share'?'pct':f.id==='total'?'count':m.fmt,
-        gap:first&&!isFpl?false:false,gapsrc:isFpl&&firstFpl&&first});
-      if(isFpl&&firstFpl&&first)firstFpl=false;
+        gap:false});
       first=false;
     }
+  }
+  for(const c of cols){
+    if(!c.metric)continue;
+    const g=M(c.metric).group;
+    if(!famSeen.has(g)){famSeen.add(g);c.famgap=true;}
   }
   return cols;
 }
@@ -980,62 +1481,150 @@ function tipFor(c){
   if(!c)return null;
   if(BASE_TIPS[c.id]){const[t,d]=BASE_TIPS[c.id];return{title:t,body:d,src:null};}
   const m=M(c.metric);if(!m)return null;
-  if(c.frame==='rank')return{title:`${m.label} — ${RANK_TIP[0]}`,body:`${RANK_TIP[1]}<br><br>${m.desc}`,src:SRC[m.src]};
+  const pv=provenance(m);
+  if(c.frame==='rank')return{title:`${m.label} — ${RANK_TIP[0]}`,
+    body:`${RANK_TIP[1]}<br><br>${m.desc||m.definition||''}${pv}`,src:null};
   const f=FR(c.frame);
-  return{title:`${m.label} — ${f.tip[0]}`,body:`${f.tip[1]}<br><br>${m.desc}`,src:SRC[m.src]};
+  return{title:`${m.label} — ${f.tip[0]}`,
+    body:`${f.tip[1]}<br><br>${m.desc||m.definition||''}${pv}`,src:null};
+}
+
+/* A key for the abbreviations currently on screen. Dense tables are only
+   legible once the codes are learnable. */
+function buildKey(cols){
+  const host=document.getElementById('keystrip');
+  if(!host)return;
+  const seen=new Map();
+  for(const c of cols){
+    if(!c.metric)continue;
+    const m=M(c.metric);if(!m)continue;
+    if(!seen.has(m.key))seen.set(m.key,{a:abbr(m),full:m.label,m});
+  }
+  if(!seen.size||!state.showKey){
+    host.innerHTML=seen.size
+      ? `<button class="keytog" id="keyTog">Show key</button>`:'';
+  }else{
+    host.innerHTML=`<button class="keytog" id="keyTog" aria-pressed="true">Hide key</button>`+
+      [...seen.values()].map(x=>
+        `<span class="keyitem" data-help="${encodeURIComponent(
+          (x.m.desc||x.m.definition||'')+provenance(x.m))}">`+
+        `<b>${x.a}</b>${x.full}</span>`).join('');
+    host.querySelectorAll('[data-help]').forEach(el=>{
+      attachTip(el,{title:el.querySelector('b').textContent,
+        body:decodeURIComponent(el.dataset.help),src:null});});
+  }
+  const t=document.getElementById('keyTog');
+  if(t)t.onclick=()=>{state.showKey=!state.showKey;buildKey(cols);writeHash();};
+  host.classList.toggle('empty',!seen.size);
+}
+
+/* Jump bar: one pill per metric family present in the current selection,
+   scrolling the table horizontally to that family's first column. */
+function buildJump(cols){
+  const host=document.getElementById('jumpbar');
+  if(!host)return;
+  const seen=new Map();
+  for(const c of cols){
+    if(!c.metric)continue;
+    const m=M(c.metric);if(!m)continue;
+    if(!seen.has(m.group))seen.set(m.group,c.id);
+  }
+  const wrap=document.getElementById('tablewrap');
+  const overflows=wrap&&wrap.scrollWidth-wrap.clientWidth>120;
+  if(seen.size<2||!overflows){host.innerHTML='';host.classList.add('empty');return;}
+  host.classList.remove('empty');
+  host.innerHTML=`<span class="lbl">Jump to</span>`+
+    [...seen].map(([g,id])=>
+      `<button class="jump ${CC[g]||''}" data-jump="${id}">${g}</button>`).join('')+
+    ``;
+  host.querySelectorAll('[data-jump]').forEach(b=>{
+    b.onclick=()=>{
+      const th=document.querySelector(`th[data-col="${b.dataset.jump}"]`);
+      const wrap=document.getElementById('tablewrap');
+      if(!th||!wrap)return;
+      const frozen=FRZ_W.reduce((a,x)=>a+x,0);
+      wrap.scrollTo({left:th.offsetLeft-frozen-8,behavior:'smooth'});};});
 }
 
 function render(){
+  try{ renderInner(); }
+  catch(err){
+    console.error('render',err);
+    const e=document.getElementById('empty'),t=document.getElementById('tbody');
+    if(t)t.innerHTML='';
+    if(e){e.hidden=false;
+      e.innerHTML='<b>Render failed.</b> '+(err&&err.message||err)+
+        ' <button class="clear" id="rfix">Reset metrics</button>';
+      const b=document.getElementById('rfix');
+      if(b)b.onclick=()=>{state.off=[];state.extra=[];state.tab='Attacking';
+        buildTabs();buildFrames();render();};}
+  }
+}
+function renderInner(){
   const rows=apply(aggregate()),cols=columns();
   const listed=rows.filter(r=>!state.pins.includes(r.player_code)).length;
   const pages=Math.max(1,Math.ceil(listed/PAGE));
   state.page=Math.min(state.page,pages-1);
   if(!cols.some(c=>c.id===state.sort))state.sort='minutes';
 
+  /* The band above the columns names the METRIC FAMILY, not the frame — the
+     family is what you need to locate yourself, and the frame is already in
+     each column label whenever more than one is showing. */
   const grp=[];
   for(const c of cols){
-    const key=c.block+(c.fplcol?':f':'');
+    const m=c.metric?M(c.metric):null;
+    const fam=m?m.group:(c.block==='id'?'__id':'__av');
     const last=grp[grp.length-1];
-    if(last&&last.key===key)last.span++;
-    else grp.push({key,block:c.block,fpl:!!c.fplcol,span:1,gap:c.gap,gapsrc:c.gapsrc});
+    if(last&&last.fam===fam)last.span++;
+    else grp.push({fam,span:1,first:c.id});
   }
-  const NAME={id:'',obs:'Observed',der:'Derived'};
+  const FAMNAME={__id:'',__av:'Availability'};
   const thead=document.getElementById('thead');
   thead.innerHTML='<tr class="blocks">'+grp.map((g,i)=>{
-    const cls=[g.block==='id'?'':g.block,g.fpl?'fplcol':'',g.gap?'gap':'',g.gapsrc?'gapsrc':'',i===0?'name':''].filter(Boolean).join(' ');
-    const lab=g.block==='id'?'':(g.fpl?`<span style="color:var(--g-fpl)">${NAME[g.block]} · fantasy</span>`:NAME[g.block]);
-    return `<th colspan="${g.span}" class="${cls}">${lab}</th>`;}).join('')+
+    const known=!g.fam.startsWith('__');
+    const cls=[known?'fam '+(KC[g.fam]||''):'',g.fam==='__av'?'avband':'',
+      i===0?'name frz frzspan':'',i>0?'famgap':''].filter(Boolean).join(' ');
+    const st=i===0?` style="${frzStyle(0)}"`:'';
+    return `<th colspan="${g.span}" class="${cls}"${st}>`+
+      `${known?g.fam:FAMNAME[g.fam]}</th>`;}).join('')+
     '</tr><tr class="labels">'+cols.map(c=>{
     const m=c.metric?M(c.metric):null;
+    const famStart=grp.some(g=>g.first===c.id&&!g.fam.startsWith('__'));
     const cls=[c.block==='id'?'':c.block,c.fplcol?'fplcol':'',c.type==='name'?'name':'',
-      c.gap?'gap':'',c.gapsrc?'gapsrc':'',state.sort===c.id?'sorted':'',
-      m?KC[m.group]:'k-base'].filter(Boolean).join(' ');
-    return `<th data-col="${c.id}" class="${cls}">${c.label}</th>`;}).join('')+'</tr>';
+      c.gap?'gap':'',famStart?'famgap':'',state.sort===c.id?'sorted':'',
+      m?KC[m.group]:'k-base'].filter(Boolean).join(' ')+frzCls(c);
+    const st=c.frz!=null?` style="${frzStyle(c.frz)}"`:'';
+    return `<th data-col="${c.id}" class="${cls}"${st} `+
+      `title="${c.full||c.label}">${c.label}</th>`;
+  }).join('')+'</tr>';
 
   const tbody=document.getElementById('tbody'),empty=document.getElementById('empty');
   const cell=(c,r)=>{
     const m=c.metric?M(c.metric):null;
-    const cls=[c.block==='id'?'':c.block,c.fplcol?'fplcol':'',c.gap?'gap':'',c.gapsrc?'gapsrc':''].filter(Boolean).join(' ');
+    const cls=[c.block==='id'?'':c.block,c.fplcol?'fplcol':'',c.gap?'gap':'',
+      c.famgap?'famgap':'',state.sort===c.id?'sortcol':''].filter(Boolean).join(' ')+frzCls(c);
+    const fs=c.frz!=null?` style="${frzStyle(c.frz)}"`:'';
     if(c.type==='name'){
       const on=state.pins.includes(r.player_code);
-      return `<td class="name ${cls}"><button class="pin${on?' on':''}" data-pin="${r.player_code}" `+
+      return `<td class="name ${cls}"${fs}><button class="pin${on?' on':''}" data-pin="${r.player_code}" `+
         `title="${on?'Unpin':'Pin to top'}">${on?'★':'☆'}</button>${r.web_name}`+
         `${r.moved?'<span class="moved">moved</span>':''}</td>`;}
     if(c.type==='txt'){
-      if(c.id==='team_name')return `<td class="txt ${cls} club">${clubBar(r.team_name)}${r.team_name??'—'}</td>`;
-      return `<td class="txt ${cls} ${c.cls||''}">${r[c.id]??'—'}</td>`;}
+      if(c.id==='team_name')return `<td class="txt ${cls} club"${fs} title="${r.team_name??''}">`+
+        `${clubBar(r.team_name)}${r.team_name??'—'}</td>`;
+      return `<td class="txt ${cls} ${c.cls||''}"${fs}>${r[c.id]??'—'}</td>`;}
     if(c.type==='rank'){
       const v=r[c.id],n=r[c.id+'N'];
-      if(v==null)return `<td class="${cls} nil">—</td>`;
-      return `<td class="${cls} rank${v<=10?' top '+KC[m.group]:''}">${v}<span class="den"> / ${n}</span></td>`;}
+      if(v==null)return `<td class="${cls} nil"${fs}>—</td>`;
+      return `<td class="${cls} rank${v<=10?' top '+KC[m.group]:''}"${fs}>${v}<span class="den"> / ${n}</span></td>`;}
     const s=suppressed(c,r)?null:fmt(r[c.id],c.fmt);
-    if(s==null)return `<td class="${cls} nil">—</td>`;
+    if(s==null)return `<td class="${cls} nil"${fs}>—</td>`;
     let rk='';
     if(state.rank&&c.metric&&c.frame===rankHost()){
       const v=r[c.metric+'_rank'],n=r[c.metric+'_rankN'];
       if(v!=null)rk=`<span class="trk" title="rank ${v} of ${n} in the current filter">(${v})</span>`;
     }
-    return `<td class="${cls}">${s}${rk}</td>`;
+    return `<td class="${cls}"${fs}>${s}${rk}</td>`;
   };
   if(!rows.length){
     tbody.innerHTML='';empty.hidden=false;
@@ -1045,10 +1634,12 @@ function render(){
     empty.hidden=true;
     const avg=averages(rows,cols);
     const avgRow='<tr class="avg">'+cols.map(c=>{
-      const cls=[c.block==='id'?'':c.block,c.fplcol?'fplcol':'',c.gap?'gap':'',c.gapsrc?'gapsrc':''].filter(Boolean).join(' ');
-      if(c.type==='name')return `<td class="name ${cls}">Average of ${rows.length}</td>`;
+      const cls=[c.block==='id'?'':c.block,c.fplcol?'fplcol':'',c.gap?'gap':'',
+        c.famgap?'famgap':'',state.sort===c.id?'sortcol':''].filter(Boolean).join(' ')+frzCls(c);
+      const fs=c.frz!=null?` style="${frzStyle(c.frz)}"`:'';
+      if(c.type==='name')return `<td class="name ${cls}"${fs}>Average of ${rows.length}</td>`;
       const s=avg[c.id]==null?null:fmt(avg[c.id],c.fmt);
-      return s==null?`<td class="${cls} nil"></td>`:`<td class="${cls}">${s}</td>`;
+      return s==null?`<td class="${cls} nil"${fs}></td>`:`<td class="${cls}"${fs}>${s}</td>`;
     }).join('')+'</tr>';
 
     const all=aggregate();
@@ -1083,6 +1674,8 @@ function render(){
   document.getElementById('scope').textContent=
     sr.length===1?sr[0]:contiguous?`${sr[0]}–${sr[sr.length-1]}`:`${sr.length} seasons`;
 
+  requestAnimationFrame(()=>buildJump(cols));
+  buildKey(cols);
   const byId=Object.fromEntries(cols.map(c=>[c.id,c]));
   thead.querySelectorAll('th[data-col]').forEach(th=>{
     th.onclick=()=>{state.sort=th.dataset.col;state.page=0;render();};
@@ -1093,6 +1686,17 @@ function render(){
 
 /* ---------- drawer ---------- */
 function openDrawer(code){
+  if(!optaLoaded.has(seasonsInRange()[0]))
+    ensureOpta().then(ok=>{if(ok&&state.sel===code)openDrawer(code);});
+  try{ openDrawerInner(code); }
+  catch(err){
+    console.error('drawer',err);
+    const b=document.getElementById('dBody');
+    if(b)b.innerHTML='<div class="dsec s-base"><h3>Something broke</h3>'+
+      '<div class="lmsg">'+(err&&err.message||err)+'</div></div>';
+  }
+}
+function openDrawerInner(code){
   const rows=apply(aggregate());
   const r=rows.find(x=>x.player_code===code)||aggregate().find(x=>x.player_code===code);
   if(!r)return;
@@ -1115,7 +1719,8 @@ function openDrawer(code){
       p.moved?'changed club in range':null].filter(Boolean);
     return `<div class="dfig">${figure(p)}</div><div class="dtext">`+
       `<h2>${fn}${fn!==p.web_name?`<span class="dalias">${p.web_name}</span>`:''}</h2>`+
-      `<div class="meta">${clubBar(p.team_name,true)}${p.team_name} · ${bits.join(' · ')}</div></div>`;
+      `<div class="meta">${clubBar(p.team_name,true)}${p.team_name} · ${bits.join(' · ')}</div>`+
+      archetypeBlock(p)+`</div>`;
   };
 
   const slot=two
@@ -1167,61 +1772,33 @@ function openDrawer(code){
     search.oninput=()=>paint(search.value);
   }
 
-  const AVAIL=[['Minutes','minutes','int'],['Appearances','appearances','int'],
-    ['Starts','starts','int'],['60+ mins','apps_60','int'],
-    ['Min / app','min_per_app','int'],['Min share','minutes_share','pct']];
   let html='';
-  const av=(lbl,k,f)=>two
-    ?`<div class="arow"><span class="av a">${fmt(r[k],f)??'—'}</span>`+
-     `<span class="ak">${lbl}</span><span class="av b">${fmt(cmpR[k],f)??'—'}</span></div>`
-    :`<div class="dpair"><div class="k">${lbl}</div><div class="v">${fmt(r[k],f)??'—'}</div></div>`;
-  html+=`<div class="dsec s-base"><div class="${two?'arows':'dpairs'}">`+
-    AVAIL.map(x=>av(x[0],x[1],x[2])).join('')+`</div></div>`;
 
   const perfOK=['Attacking','Defensive']
     .filter(g=>groupMetrics(g).some(m=>m.pos.includes(r.position)));
   const fanOK=groupMetrics('Fantasy').some(m=>m.pos.includes(r.position));
   if(!perfOK.length)state.radarMode='fantasy';
-  if(!state.radars.length||!state.radars.some(g=>perfOK.includes(g)))
-    state.radars=perfOK.slice(0,1);
-  const mode=state.radarMode==='fantasy'&&fanOK?'fantasy':'perf';
+  state.radars=perfOK.slice();   /* both, always — the toggle went unused */
+  const mode=state.radarMode==='fantasy'&&fanOK?'fantasy'
+    :state.radarMode==='style'?'style':'perf';
 
+  const hasStyle=!!(store.clusters&&styleOf(code));
   let ctl=`<div class="rtoggle"><span class="seg rseg">`+
     (perfOK.length?`<button data-mode="perf" aria-pressed="${mode==='perf'}">Performance</button>`:'')+
+    (hasStyle?`<button data-mode="style" aria-pressed="${mode==='style'}">Style</button>`:'')+
     (fanOK?`<button data-mode="fantasy" aria-pressed="${mode==='fantasy'}">Fantasy</button>`:'')+
     `</span>`;
-  if(mode==='perf')ctl+=perfOK.map(g=>
-    `<button class="chip ${CC[g]}" data-radar="${g}" `+
-    `aria-pressed="${state.radars.includes(g)}">${g}</button>`).join('');
   ctl+=`</div>`;
   const groups=mode==='fantasy'?['Fantasy']:perfOK.filter(g=>state.radars.includes(g));
-  const radarHtml=groups.length?radarSVG(r,groups)
+  const radarHtml=mode==='style'?styleRadarSVG(r)
+    :groups.length?radarSVG(r,groups)
     :`<div class="dsec s-base"><div class="lmsg">No radar selected.</div></div>`;
   const leftCol=`<details class="dsec s-base radarsec" open><summary class="dsum">Radar</summary>`+
     ctl+radarHtml+`</details>`+
+    similarBlock(r,code)+
     `<div class="dsec s-base" id="dLog"><h3>Match log</h3><div class="lmsg">Loading…</div></div>`;
 
-  html+=`<div class="rtoggle"><span class="clbl">Values</span><span class="seg rseg">`+
-    FRAME_DEFS.map(f=>`<button data-cframe="${f.id}" `+
-      `aria-pressed="${state.cmpFrame===f.id}">${f.label}</button>`).join('')+`</span>`+
-    `<button class="rhelp" data-help="${encodeURIComponent(
-      `<b>Bars and chips are percentiles</b> against ${pctPool(r.position).length} `+
-      `${r.position}s clearing the minutes floor, on the adjusted rate. 100 is best, `+
-      `0 worst. Metrics marked \u2193 are better when lower, so 100 there means fewest.`+
-      (two?`<br><br>In comparison the split bar shows each player's share of the pair, `+
-        `while the chip colour still shows quality against the league — so a longer bar `+
-        `with a red chip means more of something that is not good.`:'')+
-      `<br><br>The number in brackets after each value is the player's rank on the `+
-      `displayed frame, within the current filter.`
-    )}" aria-label="How to read these">?</button></div>`;
-
-  for(const g of GROUPS){
-    const ms=groupMetrics(g).filter(m=>m.pos.includes(r.position))
-      .filter(m=>state.cmpFrame!=='share'||m.share);
-    if(!ms.length)continue;
-    html+=`<details class="dsec ${SC[g]}" open><summary class="dsum">${g}</summary>`+
-      statRows(ms,r,cmpR,state.cmpFrame)+`</details>`;
-  }
+  html+=profilePanel(r,cmpR,two);
 
   document.getElementById('dBody').innerHTML=
     `<div class="dcols"><div class="dcol left">${leftCol}</div>`+
@@ -1231,16 +1808,19 @@ function openDrawer(code){
   document.getElementById('backdrop').classList.add('on');
   document.querySelectorAll('tbody tr').forEach(tr=>
     tr.classList.toggle('sel',+tr.dataset.code===code));
-  document.querySelectorAll('[data-radar]').forEach(b=>{
-    b.onclick=()=>{
-      const g=b.dataset.radar,i=state.radars.indexOf(g);
-      if(i>=0){if(state.radars.length>1)state.radars.splice(i,1);}
-      else state.radars.push(g);
-      openDrawer(code);};});
   document.querySelectorAll('[data-mode]').forEach(b=>{
     b.onclick=()=>{state.radarMode=b.dataset.mode;openDrawer(code);};});
+  document.querySelectorAll('[data-ptab]').forEach(b=>{
+    b.onclick=async()=>{
+      state.profTab=b.dataset.ptab;
+      if(OPTA_GROUPS.includes(state.profTab))await ensureOpta();
+      openDrawer(code);};});
   document.querySelectorAll('[data-cframe]').forEach(b=>{
     b.onclick=()=>{state.cmpFrame=b.dataset.cframe;openDrawer(code);};});
+  document.querySelectorAll('[data-sim-pos]').forEach(b=>{
+    b.onclick=()=>{state.simSamePos=b.dataset.simPos==='1';openDrawer(code);};});
+  document.querySelectorAll('[data-sim]').forEach(b=>{
+    b.onclick=()=>{state.cmp=+b.dataset.sim;openDrawer(code);};});
   document.querySelectorAll('[data-help]').forEach(b=>{
     const body=decodeURIComponent(b.dataset.help);
     attachTip(b,{title:'How to read this',body,src:null});});
@@ -1345,7 +1925,7 @@ function closeDrawer(){
   document.getElementById('backdrop').classList.remove('on');
   document.querySelectorAll('tbody tr.sel').forEach(tr=>tr.classList.remove('sel'));
 }
-document.getElementById('backdrop').onclick=closeDrawer;
+document.getElementById('backdrop')?.addEventListener('click',closeDrawer);
 
 /* Compact headers for the match log, where full labels do not fit */
 const SHORT={goals:'G',assists:'A',xg:'xG',xa:'xA',xgi:'xGI',tackles:'Tkl',
@@ -1390,8 +1970,12 @@ function pctPool(pos){
   const out=aggregate().filter(x=>x.position===pos&&x.minutes>=f);
   PCT_POOL.set(k,out);return out;
 }
-function pctFor(p,m){
-  const pool=pctPool(p.position),f=m.key+'_adj90',v=p[f];
+/* Both rank and percentile run on the frame being displayed. Ranking a Total
+   column by the adjusted rate makes two players on the same total show
+   different ranks, which is how this went wrong before. */
+function pctFor(p,m,frame){
+  const fr=frame||state.cmpFrame||'adj90';
+  const pool=pctPool(p.position),f=m.key+'_'+fr,v=p[f];
   if(v==null||pool.length<8)return null;
   const vals=pool.map(x=>x[f]).filter(x=>x!=null);
   if(vals.length<8)return null;
@@ -1399,11 +1983,12 @@ function pctFor(p,m){
   return Math.round(below/(vals.length-1)*100);
 }
 const RANK_CACHE=new Map();
-function rankFor(p,m){
-  const key=seasonsInRange().join('|')+'|'+p.position+'|'+m.key;
+function rankFor(p,m,frame){
+  const fr=frame||state.cmpFrame||'adj90';
+  const key=seasonsInRange().join('|')+'|'+p.position+'|'+m.key+'|'+fr;
   let map=RANK_CACHE.get(key);
   if(!map){
-    const f=m.key+'_adj90';
+    const f=m.key+'_'+fr;
     const sorted=pctPool(p.position).filter(x=>x[f]!=null)
       .sort((a,b)=>(b[f]-a[f])*(m.dir??1));
     map=new Map();sorted.forEach((x,i)=>map.set(x.player_code,i+1));
@@ -1412,8 +1997,10 @@ function rankFor(p,m){
   }
   return {r:map.get(p.player_code)??null,n:map.get('n')||0};
 }
-const rkTag=(p,m)=>{const{r,n}=rankFor(p,m);
-  return r==null?'':`<span class="srk" title="rank ${r} of ${n} ${p.position}s">(${r})</span>`;};
+const rkTag=(p,m,frame)=>{
+  const fr=frame||state.cmpFrame||'adj90',{r,n}=rankFor(p,m,fr);
+  return r==null?'':`<span class="srk" title="rank ${r} of ${n} ${p.position}s `+
+    `on ${FR(fr).label}">(${r})</span>`;};
 const pctBand=p=>p==null?'na':p>=80?'b4':p>=60?'b3':p>=40?'b2':p>=20?'b1':'b0';
 
 /* One player: FBref-style percentile bar. Two: Squawka-style split bar showing
@@ -1421,26 +2008,378 @@ const pctBand=p=>p==null?'na':p>=80?'b4':p>=60?'b3':p>=40?'b2':p>=20?'b1':'b0';
 function statRows(ms,a,b,frame){
   const val=(p,m)=>fmt(p[m.key+'_'+frame],frame==='share'?'pct':m.fmt);
   if(!b) return '<div class="srows">'+ms.map(m=>{
-    const pc=pctFor(a,m);
-    return `<div class="srow"><span class="slab">${m.label}${(m.dir??1)<0?' ↓':''}</span>`+
-      `<span class="sval">${val(a,m)??'—'}${rkTag(a,m)}</span>`+
+    const pc=pctFor(a,m,frame);
+    return `<div class="srow"><span class="slab" title="${m.label}">`+
+      `${m.label}${(m.dir??1)<0?' ↓':''}</span>`+
+      `<span class="sval">${val(a,m)??'—'}${rkTag(a,m,frame)}</span>`+
       `<span class="strack"><span class="sfill" style="width:${pc??0}%"></span></span>`+
       `<span class="chip ${pctBand(pc)}">${pc??'—'}</span></div>`;}).join('')+'</div>';
   return '<div class="srows two">'+ms.map(m=>{
-    const pa=pctFor(a,m),pb=pctFor(b,m);
+    const pa=pctFor(a,m,frame),pb=pctFor(b,m,frame);
     const va=a[m.key+'_'+frame],vb=b[m.key+'_'+frame];
     const ok=va!=null&&vb!=null&&!Number.isNaN(va)&&!Number.isNaN(vb);
     const tot=ok?Math.abs(va)+Math.abs(vb):0;
     const wa=ok&&tot>0?Math.abs(va)/tot*100:50;
     const dir=m.dir??1;
     const lead=!ok?'':dir>0?(va>vb?'a':va<vb?'b':''):(va<vb?'a':va>vb?'b':'');
-    return `<div class="srow2"><span class="slab">${m.label}${dir<0?' ↓':''}</span>`+
-      `<span class="sval r ${lead==='a'?'lead':'dim'}">${val(a,m)??'—'}${rkTag(a,m)}</span>`+
+    return `<div class="srow2"><span class="slab" title="${m.label}">`+
+      `${m.label}${dir<0?' ↓':''}</span>`+
+      `<span class="sval r ${lead==='a'?'lead':'dim'}">${val(a,m)??'—'}${rkTag(a,m,frame)}</span>`+
       `<span class="chip ${pctBand(pa)}">${pa??'—'}</span>`+
       `<span class="split"><span class="pa" style="width:${wa.toFixed(1)}%"></span>`+
       `<span class="pb"></span></span>`+
       `<span class="chip ${pctBand(pb)}">${pb??'—'}</span>`+
-      `<span class="sval ${lead==='b'?'lead':'dim'}">${val(b,m)??'—'}${rkTag(b,m)}</span></div>`;}).join('')+'</div>';
+      `<span class="sval ${lead==='b'?'lead':'dim'}">${val(b,m)??'—'}${rkTag(b,m,frame)}</span></div>`;}).join('')+'</div>';
+}
+
+/* Style radar — the space similarity and the archetypes actually work in.
+   Values are z-scores within position, so the middle ring is the positional
+   average and the axes describe shape rather than quality. */
+const STYLE_AXES=[
+  ['pass_share_of_team','Team passes'],['fwd_pass_share','Forward passes'],
+  ['long_ball_share','Long balls'],['cross_share','Crosses'],
+  ['final_third_touch_share','Final third'],['opp_box_touch_share','Opp box'],
+  ['take_on_rate','Take-ons'],['shots_per_touch','Shooting'],
+  ['aerial_duel_share','Aerials'],['tackle_share','Tackles'],
+];
+const zToPct=z=>Math.max(0,Math.min(100,50+(z??0)*20));
+
+function styleRadarSVG(r){
+  const F=store.clusters?.features;
+  const me=styleOf(r.player_code);
+  const box=b=>`<div class="dsec s-base"><h3>Style</h3><div class="lmsg">${b}</div></div>`;
+  if(!F||!me)return box('No style data for this player in the selected seasons.');
+  const axes=STYLE_AXES.map(([k,lab])=>({k,lab,i:F.indexOf(k)})).filter(a=>a.i>=0);
+  if(axes.length<3)return box('Style features not available.');
+
+  const cmp=state.cmp&&state.cmp!==r.player_code
+    ?aggregate().find(x=>x.player_code===state.cmp):null;
+  const cst=cmp?styleOf(cmp.player_code):null;
+
+  const W=340,H=300,cx=170,cy=146,R=102;
+  const n=axes.length,ang=i=>-Math.PI/2+i*2*Math.PI/n;
+  const at=(i,rad)=>[cx+Math.cos(ang(i))*rad,cy+Math.sin(ang(i))*rad];
+  const col=cst?'var(--pa)':'var(--g-fpl)';
+
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="radar" role="img">`;
+  for(const ring of [20,40,60,80,100]){
+    const p=axes.map((_,i)=>at(i,R*ring/100).map(v=>v.toFixed(1)).join(',')).join(' ');
+    s+=`<polygon points="${p}" class="ring${ring===50?'':(ring===100?' outer':'')}"/>`;
+  }
+  const mid=axes.map((_,i)=>at(i,R*0.5).map(v=>v.toFixed(1)).join(',')).join(' ');
+  s+=`<polygon points="${mid}" class="ring avgring"/>`;
+  axes.forEach((_,i)=>{const[x,y]=at(i,R);
+    s+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="spoke"/>`;});
+
+  if(cst){
+    const cp=axes.map((a,i)=>at(i,R*zToPct(cst.z[a.i])/100).map(v=>v.toFixed(1)).join(',')).join(' ');
+    s+=`<polygon points="${cp}" class="area cmp"/>`;
+  }
+  const poly=axes.map((a,i)=>at(i,R*zToPct(me.z[a.i])/100).map(v=>v.toFixed(1)).join(',')).join(' ');
+  s+=`<polygon points="${poly}" class="area" style="--rc:${col}"/>`;
+  axes.forEach((a,i)=>{const[x,y]=at(i,R*zToPct(me.z[a.i])/100);
+    s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" class="dot" style="--rc:${col}"/>`;});
+
+  axes.forEach((a,i)=>{
+    const[x,y]=at(i,R+17);
+    const ag=ang(i),anchor=Math.abs(Math.cos(ag))<.25?'middle':(Math.cos(ag)>0?'start':'end');
+    const dy=Math.sin(ag)>.7?9:(Math.sin(ag)<-.7?-3:3);
+    const z=me.z[a.i];
+    s+=`<text x="${x.toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="${anchor}" class="rlab">`+
+       `${a.lab}</text>`+
+       `<text x="${x.toFixed(1)}" y="${(y+dy+11).toFixed(1)}" text-anchor="${anchor}" class="rval">`+
+       `${z==null?'—':(z>0?'+':'')+z.toFixed(1)}</text>`;
+  });
+  s+='</svg>';
+
+  const legend=cst?`<div class="rleg">`+
+    `<span><i class="sw" style="--rc:${col}"></i>${r.web_name}</span>`+
+    `<span><i class="sw cmp"></i>${cmp.web_name}</span></div>`:'';
+  const help=`<b>This is the shape similarity is measured on.</b> Each axis is a `+
+    `z-score against players in the same position: the middle ring is the `+
+    `positional average, further out is more of that trait, further in is less.`+
+    `<br><br>It describes HOW a player plays, not how well. Two players can share `+
+    `a shape here and be far apart on the performance radar.`+
+    `<br><br>Fitted on Opta season ratios. Assignment shown is from ${me.season}.`;
+  return `<div class="dsec s-base"><h3>Style`+
+    `<span class="rhelp" data-help="${encodeURIComponent(help)}" role="note" `+
+    `aria-label="About the style radar">?</span></h3>${legend}${s}</div>`;
+}
+
+/* ---------- data status ---------- */
+/* Each feed updates on its own schedule, so one "built X ago" line hides more
+   than it tells. The bell reports each feed separately and says plainly when
+   one has fallen behind the fixtures. */
+const FEED_LABEL={fpl:'Fantasy Premier League',opta:'Premier League (Opta)',
+  vaastav:'vaastav archive',fplcache:'Price snapshots',style:'Style model'};
+const FEED_ORDER=['fpl','opta','vaastav','fplcache','style'];
+const STALE_HOURS={fpl:30,opta:30,vaastav:72,fplcache:48};
+function ago(iso){
+  if(!iso)return null;
+  const h=(Date.now()-new Date(iso))/3.6e6;
+  if(h<0.05)return 'just now';
+  if(h<1)return `${Math.round(h*60)} min ago`;
+  if(h<48)return `${Math.round(h)} hours ago`;
+  return `${Math.round(h/24)} days ago`;
+}
+const hoursSince=iso=>iso?(Date.now()-new Date(iso))/3.6e6:null;
+
+function buildBell(){
+  const btn=document.getElementById('bellBtn'),panel=document.getElementById('bellPanel');
+  const dot=document.getElementById('bellDot');
+  if(!btn)return;
+  const st=store.status;
+  const feeds=st?.feeds||{};
+  let worst=null;
+  for(const k of FEED_ORDER){
+    if(k==='style')continue;
+    const h=hoursSince(feeds[k]?.as_of);
+    if(h!=null&&h>(STALE_HOURS[k]||30))worst=worst==null?h:Math.max(worst,h);
+  }
+  dot.hidden=worst==null;
+
+  const row=k=>{
+    const f=feeds[k];if(!f)return '';
+    const h=hoursSince(f.as_of);
+    const stale=k!=='style'&&h!=null&&h>(STALE_HOURS[k]||30);
+    const when=k==='style'?`fitted ${ago(f.as_of)??'—'}`:(ago(f.as_of)??'unknown');
+    return `<div class="brow${stale?' stale':''}"><span class="bk">${FEED_LABEL[k]||k}`+
+      (f.note?`<span class="bn">${f.note}</span>`:'')+`</span>`+
+      `<span class="bv">${when}</span></div>`;
+  };
+
+  let body='';
+  if(!st){
+    body=`<div class="bmsg">No status file. The pipeline writes `+
+      `<code>status.json</code> on every run — if this stays empty, the export `+
+      `is not reaching web/data.</div>`;
+  }else{
+    body=FEED_ORDER.map(row).filter(Boolean).join('');
+    const gwLine=st.latest_finalised_gw!=null
+      ? `Gameweek ${st.latest_finalised_gw} complete`+
+        (st.gw_in_progress?`, ${st.gw_in_progress} in progress`:'')
+      : null;
+    /* Opta is season-grain and pulled twice a day, so it trails evening
+       fixtures. Say so rather than letting the numbers quietly disagree. */
+    const oh=hoursSince(feeds.opta?.as_of),fh=hoursSince(feeds.fpl?.as_of);
+    const lag=(oh!=null&&fh!=null&&oh-fh>3)
+      ? `<div class="bnote">Opta season totals were fetched ${Math.round(oh-fh)} `+
+        `hours before the latest FPL update, so any match played since then is in `+
+        `the fantasy numbers but not yet in passing, carries or duels.</div>`:'';
+    body=`<div class="bhead">${st.current_season||''}`+
+      (gwLine?`<span class="bgw">${gwLine}</span>`:'')+`</div>`+body+lag+
+      `<div class="bfoot">Checked ${ago(st.generated_at)??'—'}`+
+      `<button id="bellReload">Reload</button></div>`;
+  }
+  panel.innerHTML=body;
+  const rl=document.getElementById('bellReload');
+  if(rl)rl.onclick=()=>location.reload();
+  btn.onclick=e=>{
+    e.stopPropagation();
+    const open=panel.classList.contains('on');
+    document.querySelectorAll('.ms-panel.on,.bellpanel.on').forEach(x=>x.classList.remove('on'));
+    if(!open)panel.classList.add('on');};
+  panel.onclick=e=>e.stopPropagation();
+}
+
+/* ---------- metric register ---------- */
+/* The register is generated by the pipeline and is the source of truth for
+   labels, provenance, coverage and caveats. It is merged onto the built-in
+   catalogue rather than replacing it, so a missing or malformed register
+   degrades to the hardcoded metrics instead of an empty app. */
+const OPTA_GROUPS=['Passing','Territory','Duels'];
+/* Opta and FPL both count these. FPL's version is already core, already in the
+   priority order and already used by the fantasy views, so the Opta twin is
+   kept in the mart but not offered in the catalogue — one goals column, not
+   two that quietly disagree. */
+const OPTA_DUPES=new Set(['o_goals','o_goal_assist','o_yellow_card','o_red_card',
+  'o_own_goals_conceded','o_saves','o_clean_sheet','o_goals_conceded',
+  'o_appearances','o_mins_played','o_game_started','o_total_sub_off',
+  'o_penalty_conceded','o_pen_goals_conceded','o_att_pen_goal']);
+function mergeRegister(rows){
+  if(!Array.isArray(rows))return;
+  const byId=new Map(METRICS.map(m=>[m.key,m]));
+  for(const e of rows){
+    const id=e.id||e.name;if(!id)continue;
+    const tier=e.tier||'core';
+    if(tier==='archive')continue;
+    const grain=e.grain||'season';
+    const prov={feed:e.feed,raw_field:e.raw_field,definition:e.definition,
+      derived_from:e.derived_from,coverage_note:e.coverage_note,caveat:e.caveat,
+      first_season:e.first_season,last_season:e.last_season,tier,grain,
+      context:e.context};
+    const cur=byId.get(id);
+    if(cur){Object.assign(cur,prov);if(e.label)cur.label=e.label;continue;}
+    if(grain!=='season')continue;
+    /* Only the Opta counts are safe to aggregate across a season range.
+       Ratios would need recomputing from components, not summing. */
+    if(!id.startsWith('o_'))continue;
+    if(OPTA_DUPES.has(id))continue;
+    if(/_share$|_accuracy$|_pct$|_rate$|_height$/.test(id))continue;
+    METRICS.push({key:id,label:e.label||id.replace(/^o_/,'').replace(/_/g,' '),
+      group:e.group&&OPTA_GROUPS.concat(GROUPS).includes(e.group)?e.group:'Passing',
+      src:'match',pos:(e.applies_to_positions||'GK,DEF,MID,FWD').split(',').map(x=>x.trim()),
+      fmt:'count',k:e.k??8,dir:e.direction??1,share:false,
+      desc:e.definition||'',...prov});
+  }
+}
+
+/* ---------- lazy Opta ---------- */
+/* Season files are ~1.3 MB each and only needed once a football tab is
+   opened, so they load on demand and are merged onto the season rows. */
+const optaLoaded=new Set();      /* merged successfully */
+const optaMissing=new Set();     /* no side file for this season */
+let optaInFlight=null;
+async function ensureOpta(){
+  if(optaInFlight)return optaInFlight;
+  const want=seasonsInRange().filter(x=>!optaLoaded.has(x)&&!optaMissing.has(x));
+  if(!want.length)return false;
+  optaInFlight=(async()=>{
+    let got=false;
+    for(const season of want){
+      const flag=store.manifest.seasons.find(x=>x.season===season);
+      if(flag&&flag.opta===false){optaMissing.add(season);continue;}
+      try{
+        const blob=await getJSON(`opta_${season}.json`);
+        const rows=store.seasons[season]||[];
+        for(const r of rows){
+          const o=blob[r.player_code]??blob[String(r.player_code)];
+          if(o)Object.assign(r,o);
+        }
+        /* only now is it safe to say this season is done */
+        optaLoaded.add(season);got=true;
+      }catch(e){optaMissing.add(season);}
+    }
+    if(got){cacheKey='';PCT_POOL.clear();RANK_CACHE.clear();}
+    return got;
+  })();
+  try{return await optaInFlight;}finally{optaInFlight=null;}
+}
+const needsOpta=()=>OPTA_GROUPS.includes(state.tab)||
+  (state.tab==='All'&&!optaLoaded.has(seasonsInRange()[0]));
+
+/* ---------- metric picker ---------- */
+/* Named bundles. Ids that the register did not ship are silently skipped, so
+   a preset degrades rather than breaking when a feed is missing. */
+const PRESETS=[
+  ['Progression',['o_fwd_pass','o_total_through_ball','o_progressive_carries',
+    'o_final_third_entries','o_successful_final_third_passes']],
+  ['Chance creation',['xa','o_big_chance_created','o_total_att_assist',
+    'o_ontarget_att_assist','o_total_cross']],
+  ['Goal threat',['xg','goals','o_total_scoring_att','o_ontarget_scoring_att',
+    'o_touches_in_opp_box']],
+  ['Ball retention',['o_accurate_pass','o_dispossessed','o_unsuccessful_touch',
+    'o_poss_lost_all','o_turnover']],
+  ['Defensive volume',['o_total_tackle','o_interception','o_effective_clearance',
+    'o_ball_recovery','defcon']],
+  ['Duels',['o_duel_won','o_duel_lost','o_aerial_won','o_aerial_lost',
+    'o_total_contest','o_won_contest']],
+];
+const presetKeys=list=>list.filter(k=>M(k));
+function togglePreset(list){
+  const keys=presetKeys(list);
+  if(!keys.length)return;
+  const on=keys.every(k=>activeStats().includes(k));
+  for(const k of keys)setMetric(k,!on);
+}
+/* One place that knows how selection works: metrics in the current tab are
+   removed via `off`, metrics from elsewhere are added via `extra`. */
+function setMetric(key,want){
+  const inTab=tabMetrics().some(x=>x.key===key);
+  state.extra=state.extra||[];
+  if(inTab){
+    const i=state.off.indexOf(key);
+    if(want&&i>=0)state.off.splice(i,1);
+    if(!want&&i<0)state.off.push(key);
+  }else{
+    const i=state.extra.indexOf(key);
+    if(want&&i<0)state.extra.push(key);
+    if(!want&&i>=0)state.extra.splice(i,1);
+  }
+}
+
+function buildPresets(){
+  const host=document.getElementById('presets');
+  if(!host)return;
+  host.innerHTML=`<button class="preset ghost" id="pickBtn">+ Metrics</button>`+
+    `<div class="ms-panel pickpanel" id="pickPanel">`+
+    `<input type="text" class="ms-search" id="pickSearch" placeholder="search metrics…">`+
+    `<div class="pickpre" id="pickPre"></div>`+
+    `<div class="pickfam" id="pickFam"></div>`+
+    `<div class="ms-list" id="pickList"></div>`+
+    `<div class="ms-foot"><span class="pickcount" id="pickCount"></span>`+
+    `<button data-pick-clear>Clear all</button></div></div>`;
+
+  const panel=document.getElementById('pickPanel');
+  const btn=document.getElementById('pickBtn');
+  btn.onclick=async e=>{
+    e.stopPropagation();
+    const open=panel.classList.contains('on');
+    document.querySelectorAll('.ms-panel.on').forEach(x=>x.classList.remove('on'));
+    if(open)return;
+    if(!optaLoaded.has(seasonsInRange()[0])){btn.classList.add('loading');
+      await ensureOpta();btn.classList.remove('loading');}
+    panel.classList.add('on');paintPicker();
+    document.getElementById('pickSearch').focus();};
+  panel.onclick=e=>e.stopPropagation();
+  host.querySelector('[data-pick-clear]').onclick=()=>{
+    const cur=activeStats().slice();
+    for(const k of cur)setMetric(k,false);
+    buildFrames();render();
+    document.getElementById('pickPanel').classList.add('on');paintPicker();};
+}
+
+function paintPicker(){
+  const list=document.getElementById('pickList');
+  const fam=document.getElementById('pickFam');
+  const pre=document.getElementById('pickPre');
+  if(pre){
+    const avail=PRESETS.filter(([,l])=>presetKeys(l).length>=2);
+    pre.innerHTML=avail.length?`<span class="prelbl">Presets</span>`+avail.map(([name,l])=>{
+      const keys=presetKeys(l);
+      const on=keys.every(k=>activeStats().includes(k));
+      return `<button data-preset="${name}" aria-pressed="${on}" `+
+        `title="${keys.map(k=>M(k).label).join(', ')}">${name}</button>`;}).join(''):'';
+    pre.querySelectorAll('[data-preset]').forEach(b=>{
+      b.onclick=e=>{e.stopPropagation();
+        const x=PRESETS.find(y=>y[0]===b.dataset.preset);
+        if(x)togglePreset(x[1]);
+        buildFrames();render();
+        document.getElementById('pickPanel').classList.add('on');paintPicker();};});
+  }
+  const search=document.getElementById('pickSearch');
+  if(!list)return;
+  const q=norm(search?search.value:'');
+  const pos=state.pos.length?state.pos:ALLPOS;
+  const fams=['All',...GROUPS.filter(g=>METRICS.some(m=>m.group===g&&
+    pos.some(p=>m.pos.includes(p))))];
+  state.pickFam=fams.includes(state.pickFam)?state.pickFam:'All';
+  fam.innerHTML=fams.map(f=>
+    `<button data-fam="${f}" aria-pressed="${state.pickFam===f}">${f}</button>`).join('');
+  fam.querySelectorAll('[data-fam]').forEach(b=>{
+    b.onclick=e=>{e.stopPropagation();state.pickFam=b.dataset.fam;paintPicker();};});
+
+  const sel=new Set(activeStats());
+  const pool=METRICS.filter(m=>pos.some(p=>m.pos.includes(p))&&
+    (state.pickFam==='All'||m.group===state.pickFam)&&
+    (!q||norm(m.label).includes(q)||norm(m.key).includes(q)));
+  let html='',last=null;
+  for(const g of GROUPS){
+    const ms=pool.filter(m=>m.group===g);
+    if(!ms.length)continue;
+    if(state.pickFam==='All'||q)html+=`<div class="pickgrp">${g}</div>`;
+    html+=ms.map(m=>`<label class="ms-opt"><input type="checkbox" data-pm="${m.key}"`+
+      `${sel.has(m.key)?' checked':''}><span class="lbl" title="${m.label}">${m.label}</span>`+
+      `</label>`).join('');
+  }
+  list.innerHTML=html||'<div class="ms-none">No metric matches.</div>';
+  list.querySelectorAll('[data-pm]').forEach(cb=>{
+    cb.onchange=e=>{e.stopPropagation();setMetric(cb.dataset.pm,cb.checked);
+      buildFrames();render();
+      document.getElementById('pickPanel').classList.add('on');paintPicker();};});
+  const c=document.getElementById('pickCount');
+  if(c)c.textContent=`${sel.size} selected`;
+  if(search)search.oninput=()=>paintPicker();
 }
 
 /* ---------- avatar ---------- *//* ---------- avatar ---------- */
@@ -1620,6 +2559,293 @@ function matchDetail(g,r){
   if(!body)body='<div class="mdempty">Nothing recorded in this match.</div>';
   return `<div class="mdhead"><span class="mdwhat">Performance</span></div>`+
     `<div class="mdgrid">${body}</div>`;
+}
+
+/* ---------- style archetypes and similarity ---------- */
+/* Cluster assignments and z-vectors come from the fitted model. A player with
+   two near-equal distances genuinely sits between archetypes, so the second
+   nearest is shown whenever it is close. */
+/* Clusters are fitted on style alone, so the same shape means different things
+   at different positions — a midfielder in the ball-playing centre-back
+   cluster is a deep-lying anchor, not a defender. The name accounts for both. */
+const CLUSTER_NAMES={
+  0:{d:'All-rounder'},
+  1:{DEF:'Attacking full-back',MID:'Wide provider',FWD:'Wide provider',d:'Crosser'},
+  2:{DEF:'Advancing defender',MID:'Box-to-box',FWD:'Roaming forward',d:'Box-to-box'},
+  3:{DEF:'Stopper',MID:'Aerial midfielder',FWD:'Target man',d:'Aerial presence'},
+  4:{DEF:'Attacking threat',MID:'Goal threat',FWD:'Goalscorer',d:'Goal threat'},
+  5:{DEF:'Marauding full-back',MID:'Winger',FWD:'Winger',d:'Dribbler'},
+  6:{DEF:'Conservative defender',MID:'Holding midfielder',FWD:'Deep forward',
+     d:'Holding midfielder'},
+  7:{DEF:'Distributing defender',MID:'Deep playmaker',FWD:'Creator',
+     d:'Deep playmaker'},
+  8:{DEF:'Ball-playing centre-back',MID:'Deep-lying anchor',FWD:'Link forward',
+     d:'Ball-playing defender'},
+};
+const clusterLabel=(id,pos)=>{
+  const n=CLUSTER_NAMES[id];
+  if(n)return n[pos]||n.d;
+  const c=store.clusters?.clusters?.find(x=>x.cluster_id===id||x.id===id);
+  return c?(c.label||c.name):null;
+};
+const clusterDesc=id=>{
+  const c=store.clusters?.clusters?.find(x=>x.cluster_id===id||x.id===id);
+  return c?(c.description||''):'';
+};
+/* Most recent style row for a player within the selected seasons. */
+function styleOf(code){
+  for(const season of [...seasonsInRange()].reverse()){
+    const row=store.style[season]?.[code]??store.style[season]?.[String(code)];
+    if(row&&Array.isArray(row.z))return {season,...row};
+  }
+  return null;
+}
+const cosine=(a,b)=>{
+  let d=0,na=0,nb=0;
+  for(let i=0;i<a.length;i++){const x=a[i]??0,y=b[i]??0;d+=x*y;na+=x*x;nb+=y*y;}
+  return (na&&nb)?d/Math.sqrt(na*nb):0;
+};
+/* Nearest neighbours in style space across the selected seasons, one row per
+   player (their most recent qualifying season). */
+function similarTo(code,samePos,limit){
+  const me=styleOf(code);if(!me)return [];
+  const rows=aggregate();
+  const meRow=rows.find(x=>x.player_code===code);
+  const mag=v=>Math.sqrt(v.reduce((a,x)=>a+(x??0)*(x??0),0));
+  const myMag=mag(me.z);
+  const out=[];
+  for(const r of rows){
+    if(r.player_code===code)continue;
+    if(samePos&&meRow&&r.position!==meRow.position)continue;
+    const st=styleOf(r.player_code);if(!st)continue;
+    out.push({r,st,sim:cosine(me.z,st.z),
+      /* cosine ignores magnitude, so carry it — a faint echo of a shape scores
+         the same as a vivid one, and that difference matters */
+      mag:myMag>0?mag(st.z)/myMag:1,me});
+  }
+  out.sort((a,b)=>b.sim-a.sim);
+  return out.slice(0,limit||8);
+}
+
+/* What is actually driving a match: features where both sit far from average
+   in the same direction, and the biggest disagreement. */
+function simWhy(me,them){
+  const F=store.clusters?.features;
+  if(!F||!Array.isArray(F))return '';
+  const rows=F.map((f,i)=>({f,a:me.z[i]??0,b:them.z[i]??0}));
+  const shared=rows.filter(x=>x.a*x.b>0)
+    .sort((x,y)=>Math.min(Math.abs(y.a),Math.abs(y.b))-Math.min(Math.abs(x.a),Math.abs(x.b)))
+    .slice(0,4);
+  const apart=rows.slice().sort((x,y)=>Math.abs(y.a-y.b)-Math.abs(x.a-x.b)).slice(0,2);
+  const nice=k=>k.replace(/_/g,' ').replace(/\bshare\b/,'share');
+  const dir=v=>v>0?'high':'low';
+  return `<b>Shared shape</b>`+
+    (shared.length?shared.map(x=>
+      `<br>${nice(x.f)} — both ${dir(x.a)}`).join(''):'<br>nothing strongly shared')+
+    `<br><br><b>Where they differ most</b>`+
+    apart.map(x=>`<br>${nice(x.f)} — ${x.a.toFixed(1)} vs ${x.b.toFixed(1)}`).join('');
+}
+
+function archetypeBlock(r){
+  const st=styleOf(r.player_code);
+  if(!st||st.c==null)return '';
+  const main=clusterLabel(st.c,r.position);if(!main)return '';
+  const second=st.c2!=null?clusterLabel(st.c2,r.position):null;
+  const close=second&&st.d!=null&&st.d2!=null&&st.d2<=st.d*1.15;
+  const help=`<b>${main}</b>${clusterDesc(st.c)?'<br>'+clusterDesc(st.c):''}`+
+    (second?`<br><br>Second nearest: <b>${second}</b>${close
+      ? ' — close enough that this player sits between the two.'
+      : ' — clearly further away.'}`:'')+
+    `<br><br>Fitted on style ratios from Opta season data, not on how good the `+
+    `player is. Assignment shown is from ${st.season}.`;
+  return `<div class="arch"><span class="archlab">${main}</span>`+
+    (close?`<span class="archsec">with elements of ${second}</span>`:'')+
+    `<span class="rhelp" data-help="${encodeURIComponent(help)}" `+
+    `role="note" aria-label="About this archetype">?</span></div>`;
+}
+
+function similarBlock(r,code){
+  if(!store.clusters||!styleOf(code))return '';
+  const same=state.simSamePos!==false;
+  const list=similarTo(code,same,8);
+  const rows=list.length?list.map(x=>{
+    const faint=x.mag<0.75,vivid=x.mag>1.3;
+    const why=simWhy(x.me,x.st)+
+      `<br><br>Style intensity ${x.mag.toFixed(2)}× — `+
+      (faint?'a milder version of the same shape.'
+       :vivid?'a more extreme version of the same shape.'
+       :'a similar strength of shape.')+
+      `<br><br>Similarity ignores quality. Check the percentiles before reading `+
+      `this as a like-for-like player.`;
+    return `<button class="simrow" data-sim="${x.r.player_code}" `+
+    `data-help="${encodeURIComponent(why)}">`+
+    `${clubBar(x.r.team_name)}<span class="simname">${x.r.web_name}</span>`+
+    `<span class="simpos">${x.r.position}</span>`+
+    `<span class="simarch">${clusterLabel(x.st.c,x.r.position)??''}</span>`+
+    `<span class="simval${faint?' faint':vivid?' vivid':''}">`+
+    `${(x.sim*100).toFixed(0)}</span></button>`;}).join('')
+    :'<div class="lmsg">No comparable players in the selected seasons.</div>';
+  return `<details class="dsec s-base" open><summary class="dsum">Similar players</summary>`+
+    `<div class="simhead"><span class="seg rseg">`+
+    `<button data-sim-pos="1" aria-pressed="${same}">Same position</button>`+
+    `<button data-sim-pos="0" aria-pressed="${!same}">Any position</button>`+
+    `</span><button class="rhelp" data-help="${encodeURIComponent(
+      '<b>Similarity is about style, not quality.</b> It compares the shape of a '+
+      'player\u2019s game — where they touch the ball, how they pass, how often they '+
+      'shoot or duel — using the same ratios the archetypes are fitted on. Two '+
+      'players can be highly similar and very far apart in ability.<br><br>'+
+      'The number is a cosine similarity, 100 being identical shape. Anything '+
+      'above about 90 is a close match.<br><br>Comparing across positions often '+
+      'surfaces the most interesting results, since FPL\u2019s positions are a '+
+      'scoring convention rather than a description of how someone plays.'
+    )}" aria-label="About similarity">?</button></div>`+
+    `<div class="simlist">${rows}</div></details>`;
+}
+
+/* Readable names for the style ratios, grouped so the panel reads in sections
+   rather than as 23 undifferentiated rows. */
+const STYLE_LABELS={
+  pass_share_of_team:'Share of team passes',touch_share_of_team:'Share of team touches',
+  shot_share_of_team:'Share of team shots',
+  fwd_pass_share:'Forward passes',backward_pass_share:'Backward passes',
+  long_ball_share:'Long balls',cross_share:'Crosses',through_ball_share:'Through balls',
+  fwd_zone_pass_share:'Passes in the forward zone',pass_accuracy:'Pass accuracy',
+  final_third_touch_share:'Touches in the final third',
+  opp_box_touch_share:'Touches in the box',carry_rate:'Carries per touch',
+  progressive_carry_share:'Progressive carries',
+  shots_per_touch:'Shots per touch',ibox_shot_share:'Shots from inside the box',
+  head_shot_share:'Headed shots',
+  aerial_duel_share:'Aerial share of duels',aerial_win_pct:'Aerial win rate',
+  take_on_rate:'Take-ons per touch',take_on_success:'Take-on success',
+  loss_rate:'Losses per touch',
+  tackle_share:'Tackles',clearance_share:'Clearances',recovery_share:'Recoveries',
+  press_height:'Pressing height',
+};
+const STYLE_GROUPS=[
+  ['Volume',['pass_share_of_team','touch_share_of_team','shot_share_of_team']],
+  ['Passing',['fwd_pass_share','backward_pass_share','long_ball_share','cross_share',
+    'through_ball_share','fwd_zone_pass_share','pass_accuracy']],
+  ['Territory',['final_third_touch_share','opp_box_touch_share','carry_rate',
+    'progressive_carry_share']],
+  ['Shooting',['shots_per_touch','ibox_shot_share','head_shot_share']],
+  ['Duels',['aerial_duel_share','aerial_win_pct','take_on_rate','take_on_success',
+    'loss_rate']],
+  ['Defending',['tackle_share','clearance_share','recovery_share','press_height']],
+];
+const zLabel=k=>STYLE_LABELS[k]||k.replace(/_/g,' ');
+
+/* Diverging bars from the positional average. Negative reads left, positive
+   right, so the shape of a player is visible down the column. */
+function styleSection(r,cmpR){
+  const F=store.clusters?.features;
+  const me=styleOf(r.player_code);
+  if(!F||!me)return '';
+  const you=cmpR?styleOf(cmpR.player_code):null;
+  const bar=(z,cls)=>{
+    const w=Math.min(50,Math.abs(z??0)*20);
+    return `<span class="zb ${cls}" style="${(z??0)<0?'right:50%':'left:50%'};`+
+      `width:${w.toFixed(1)}%"></span>`;
+  };
+  let out='';
+  for(const [gname,keys] of STYLE_GROUPS){
+    const rows=keys.map(k=>({k,i:F.indexOf(k)})).filter(x=>x.i>=0);
+    if(!rows.length)continue;
+    out+=`<details class="dsec s-base" open><summary class="dsum">${gname}</summary>`+
+      `<div class="srows">`+rows.map(x=>{
+        const a=me.z[x.i],b=you?you.z[x.i]:null;
+        return `<div class="srow zrow"><span class="slab" title="${zLabel(x.k)}">`+
+          `${zLabel(x.k)}</span>`+
+          `<span class="sval zval">${a==null?'—':(a>0?'+':'')+a.toFixed(1)}</span>`+
+          `<span class="ztrack"><span class="zmid"></span>${bar(a,'a')}`+
+          (you?bar(b,'b'):'')+`</span>`+
+          (you?`<span class="sval zval b">${b==null?'—':(b>0?'+':'')+b.toFixed(1)}</span>`:'')+
+          `</div>`;}).join('')+`</div></details>`;
+  }
+  if(!out)return '';
+  const help=`<b>Style ratios, as z-scores against players in the same position.</b> `+
+    `0 is the positional average; +1 means one standard deviation above it. These `+
+    `describe how a player plays, not how well — they are the same numbers the `+
+    `archetypes and the similarity search are built on.<br><br>From ${me.season}.`;
+  return `<div class="stylehead"><span class="mdwhat">Style ratios</span>`+
+    `<span class="rhelp" data-help="${encodeURIComponent(help)}" role="note" `+
+    `aria-label="About style ratios">?</span></div>`+out;
+}
+
+/* ---------- profile panel ---------- */
+/* One family at a time behind a tab strip, with a generated Overview that
+   surfaces whatever actually stands out for this player rather than a fixed
+   list of metrics chosen in advance. */
+const STANDOUT_HI=80, STANDOUT_LO=20, STANDOUT_MAX_HI=6, STANDOUT_MAX_LO=4;
+const NOTABLE_HI=70, NOTABLE_LO=30;
+
+/* Same source, same order as the table columns — the profile is the vertical
+   rendering of the same list. */
+function profileMetrics(r,group){
+  return groupMetrics(group).filter(m=>m.pos.includes(r.position));
+}
+function profileTabs(r){
+  const t=['Overview'];
+  for(const g of GROUPS)if(profileMetrics(r,g).length)t.push(g);
+  if(store.clusters&&styleOf(r.player_code))t.push('Style');
+  return t;
+}
+
+function overviewPanel(r,cmpR,frame){
+  const seen=new Set(),all=[];
+  for(const g of GROUPS)for(const m of profileMetrics(r,g))
+    if(!seen.has(m.key)){seen.add(m.key);all.push(m);}
+  const scored=all.map(m=>({m,p:pctFor(r,m,frame)})).filter(x=>x.p!=null);
+  const hi=scored.filter(x=>x.p>=STANDOUT_HI).sort((a,b)=>b.p-a.p).slice(0,STANDOUT_MAX_HI);
+  const lo=scored.filter(x=>x.p<=STANDOUT_LO).sort((a,b)=>a.p-b.p).slice(0,STANDOUT_MAX_LO);
+  const head=(lab,cls)=>`<div class="ovhead ${cls}"><span>${lab}</span>`+
+    `<span class="ovrule"></span></div>`;
+  let out='';
+  if(hi.length)out+=head('Stands out','hi')+statRows(hi.map(x=>x.m),r,cmpR,frame);
+  if(lo.length)out+=head('Weak spots','lo')+statRows(lo.map(x=>x.m),r,cmpR,frame);
+  if(!out)out=`<div class="lmsg">Nothing above the ${STANDOUT_HI}th or below the `+
+    `${STANDOUT_LO}th percentile — an even profile for a ${r.position}.</div>`;
+
+  const AV=[['Minutes','minutes','int'],['Apps','appearances','int'],
+    ['Starts','starts','int'],['60+','apps_60','int'],
+    ['Min/app','min_per_app','int'],['Min %','minutes_share','pct']];
+  const av=p=>AV.map(x=>`<span class="ovav"><span class="k">${x[0]}</span>`+
+    `${fmt(p[x[1]],x[2])??'—'}</span>`).join('');
+  out+=`<div class="ovavail">${av(r)}</div>`+
+    (cmpR?`<div class="ovavail b">${av(cmpR)}</div>`:'');
+  return out;
+}
+
+function familyPanel(r,cmpR,group,frame){
+  let ms=profileMetrics(r,group);
+  if(frame==='share')ms=ms.filter(m=>m.share);
+  if(!ms.length)return '<div class="lmsg">Nothing in this family applies here.</div>';
+  return statRows(ms,r,cmpR,frame);
+}
+
+function profilePanel(r,cmpR,two){
+  const tabs=profileTabs(r);
+  if(!tabs.includes(state.profTab))state.profTab='Overview';
+  const t=state.profTab;
+  const strip=`<div class="ptabs">`+tabs.map(x=>
+    `<button class="ptab ${x==='Overview'||x==='Style'?'':(TC[x]||'')}" data-ptab="${x}" `+
+    `aria-selected="${x===t}">${x}</button>`).join('')+`</div>`;
+  const frames=`<div class="rtoggle"><span class="clbl">Values</span><span class="seg rseg">`+
+    FRAME_DEFS.map(f=>`<button data-cframe="${f.id}" `+
+      `aria-pressed="${state.cmpFrame===f.id}">${f.label}</button>`).join('')+`</span>`+
+    `<span class="rhelp" data-help="${encodeURIComponent(
+      `<b>Bars and chips are percentiles</b> against ${pctPool(r.position).length} `+
+      `${r.position}s clearing the minutes floor. 100 is best, 0 worst. Metrics `+
+      `marked \u2193 are better when lower, so 100 there means fewest.`+
+      (two?`<br><br>When comparing, the split bar shows each player's share of the `+
+        `pair while the chip still shows quality against the league — so a longer `+
+        `bar with a red chip means more of something that is not good.`:'')+
+      `<br><br>The bracketed number after each value is the rank on the displayed `+
+      `frame, within the same pool.`
+    )}" role="note" aria-label="How to read these">?</span></div>`;
+  const body=t==='Overview'?overviewPanel(r,cmpR,state.cmpFrame)
+    :t==='Style'?styleSection(r,cmpR)
+    :familyPanel(r,cmpR,t,state.cmpFrame);
+  return strip+(t==='Style'?'':frames)+`<div class="pbody">${body}</div>`;
 }
 
 /* ---------- radar ---------- *//* ---------- radar ---------- */
@@ -1802,6 +3028,7 @@ function buildMulti(hostId,key,values,label,bars,minOne){
           if(i>=0)state[key].splice(i,1);
         }
         state.page=0;
+        if(key==='seasons')ensureOpta().then(ok=>{if(ok)render();});
         btn.classList.toggle('active',state[key].length>0);
         btn.firstElementChild.textContent=state[key].length===1?state[key][0]:label;
         btn.lastElementChild.outerHTML=state[key].length>1
@@ -1824,7 +3051,8 @@ function buildMulti(hostId,key,values,label,bars,minOne){
       document.getElementById(hostId).querySelector('.ms-panel').classList.add('on');
       render();};});
 }
-addEventListener('click',()=>document.querySelectorAll('.ms-panel.on').forEach(p=>p.classList.remove('on')));
+addEventListener('click',()=>document.querySelectorAll('.ms-panel.on,.bellpanel.on')
+  .forEach(p=>p.classList.remove('on')));
 
 function buildFilters(){
   const desc=allSeasons().slice().reverse();          // newest first in the list
@@ -1836,7 +3064,7 @@ function buildFilters(){
   buildMulti('fNat','nat',[...new Set(all.map(r=>r.nationality))].filter(Boolean).sort(),'Nationality',false);
 }
 function buildControls(){
-  buildFilters();
+  buildFilters();buildViews();
   const mi=document.getElementById('fMin'),mv=document.getElementById('fMinVal');
   mi.value=state.minMinutes;mv.textContent=state.minMinutes;
   mi.oninput=()=>{mv.textContent=mi.value;};
@@ -1877,7 +3105,10 @@ function buildTabs(){
     `<button class="tab ${TC[g]}" data-tab="${g}" aria-selected="${state.tab===g}"><span class="dot"></span>${g}</button>`
   ).join('');
   bar.querySelectorAll('[data-tab]').forEach(b=>{
-    b.onclick=()=>{state.tab=b.dataset.tab;state.page=0;buildTabs();buildFrames();render();};});
+    b.onclick=async()=>{
+      state.tab=b.dataset.tab;state.page=0;
+      if(needsOpta()){b.classList.add('loading');await ensureOpta();b.classList.remove('loading');}
+      buildTabs();buildFrames();render();};});
 }
 
 function buildFrames(){
@@ -1895,16 +3126,35 @@ function buildFrames(){
     attachTip(b,{title:f.tip[0],body:f.tip[1],src:null});});
 
   const chips=document.getElementById('metricChips');
-  chips.innerHTML=tabMetrics().map(m=>
-    `<button class="chip ${CC[m.group]}" data-stat="${m.key}" aria-pressed="${!state.off.includes(m.key)}">${m.label}</button>`
-  ).join('');
+  let chipsNote='';
+  const sel=activeStats().map(M).filter(Boolean);
+  /* Beyond a handful the chips become a wall. Show the first few for quick
+     removal and push the rest into the picker, which is built for a list. */
+  const MAXCHIP=5;
+  if(state.off.length){
+    const backable=state.off.map(M).filter(m=>m&&tabMetrics().some(x=>x.key===m.key));
+    if(backable.length)chipsNote=`<button class="chip more" id="offChip" `+
+      `title="${backable.map(m=>m.label).join(', ')} — click to restore">`+
+      `${backable.length} hidden</button>`;
+  }
+  const shown=sel.slice(0,MAXCHIP),hidden=sel.slice(MAXCHIP);
+  chips.innerHTML=(sel.length?shown.map(m=>
+    `<button class="chip sel ${CC[m.group]||''}" data-stat="${m.key}" `+
+    `title="${m.label} — click to remove"><span class="cl">${m.label}</span>`+
+    `<span class="x">×</span></button>`).join('')
+    :`<span class="clbl dim">no metrics selected</span>`)+
+    (hidden.length?`<button class="chip more" id="moreChip" `+
+      `title="${hidden.map(m=>m.label).join(', ')}">+${hidden.length}</button>`:'')+
+    chipsNote;
   chips.querySelectorAll('[data-stat]').forEach(b=>{
     const m=M(b.dataset.stat);
-    b.onclick=()=>{
-      const i=state.off.indexOf(m.key);
-      if(i>=0)state.off.splice(i,1);else state.off.push(m.key);
-      buildFrames();render();};
-    attachTip(b,{title:m.label,body:m.desc,src:SRC[m.src]});});
+    b.onclick=()=>{setMetric(m.key,false);buildFrames();render();};
+    attachTip(b,{title:m.label,body:(m.desc||m.definition||'')+provenance(m),src:null});});
+  const more=document.getElementById('moreChip');
+  if(more)more.onclick=e=>{e.stopPropagation();document.getElementById('pickBtn')?.click();};
+  const offC=document.getElementById('offChip');
+  if(offC)offC.onclick=()=>{state.off=[];buildFrames();render();};
+  buildPresets();
 
   const rc=document.getElementById('rankChip');
   rc.setAttribute('aria-pressed',state.rank);
@@ -1916,6 +3166,7 @@ function buildFrames(){
 
 function freshness(){
   const el=document.getElementById('freshness'),b=document.getElementById('banner');
+  if(!el||!b)return;
   if(store.demo){b.hidden=false;
     b.textContent='Showing generated demo data — no files found in web/data/. Run the export, then reload.';
     el.textContent='demo data';el.classList.add('warn');return;}
@@ -1925,8 +3176,32 @@ function freshness(){
   el.textContent=h<1?'built just now':h<48?`built ${Math.round(h)} hours ago`:`built ${Math.round(h/24)} days ago`;
   el.classList.toggle('warn',h>=168);
 }
-document.getElementById('freshness').onclick=()=>location.reload();
+document.getElementById('freshness')?.addEventListener('click',()=>location.reload());
+{
+  const d=document.getElementById('denseBtn');
+  if(d){
+  d.setAttribute('aria-pressed',!!state.dense);
+  d.onclick=()=>{state.dense=!state.dense;
+    document.body.classList.toggle('dense',state.dense);
+    d.setAttribute('aria-pressed',state.dense);writeHash();};
+  }
+}
 
+{
+  const wrap=document.getElementById('tablewrap');
+  wrap.addEventListener('wheel',e=>{
+    if(!e.shiftKey)return;
+    e.preventDefault();
+    wrap.scrollLeft+=e.deltaY||e.deltaX;
+  },{passive:false});
+  const fade=()=>{
+    const more=wrap.scrollWidth-wrap.clientWidth-wrap.scrollLeft>4;
+    wrap.classList.toggle('more',more);
+  };
+  wrap.addEventListener('scroll',fade);
+  addEventListener('resize',fade);
+  new MutationObserver(fade).observe(wrap,{childList:true,subtree:true});
+}
 addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeDrawer();return;}
   if(e.target.matches('input,select'))return;
@@ -1937,7 +3212,16 @@ addEventListener('keydown',e=>{
   if(n>=1&&n<=5){const t=document.querySelectorAll('[data-tab]')[n-1];if(t)t.click();}
 });
 
-readHash();await load();await loadAvatar();buildControls();buildTabs();buildFrames();render();freshness();
+readHash();
+document.body.classList.toggle('dense',!!state.dense);
+await load();
+await loadAvatar();
+buildBell();
+buildControls();buildTabs();buildFrames();render();freshness();
+/* The register puts Opta metrics into every family, so the side file backs
+   columns in all tabs — fetch it right after first paint rather than waiting
+   for an interaction. */
+ensureOpta().then(ok=>{if(ok){buildTabs();buildFrames();render();}});
 </script>
 </body>
 </html>

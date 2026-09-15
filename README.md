@@ -45,7 +45,7 @@ uv run python transform/spot_check.py
 
 `backfill.py` pulls [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League) seasons 2016-17 through 2026-27, snapshots the live FPL API, caches `element-summary` `history_past` at ~1 req/sec, then rebuilds marts.
 
-`update.py` always writes a gzipped `bootstrap-static` snapshot (the timestamp is the data). Fixtures are re-fetched but only written when the payload bytes change. It pulls `event/{gw}/live/` for any gameweek whose bonus is finalised and not already on disk, and refreshes current-season vaastav the same way. The GitHub Action then rebuilds marts, exports `web/data`, and commits JSON whose bytes changed.
+`update.py` always writes a gzipped `bootstrap-static` snapshot (the timestamp is the data). Fixtures are re-fetched but only written when the payload bytes change. It pulls `event/{gw}/live/` for any gameweek whose bonus is finalised and not already on disk, and refreshes current-season vaastav the same way. Both GitHub crons (06:00 and 18:00 UTC) also pull Pulse Opta season totals for the current season (`FPL_PLSTATS=1`); a new `raw/plstats` dump is written only when bytes change. Each run stamps `raw/feed_fetch/` with per-feed fetch times. The GitHub Action then rebuilds marts, exports `web/data` (including a rewritten `status.json`), and commits JSON whose bytes changed. Export fails in CI if a scheduled feed's `as_of` is more than 30 hours old.
 
 ## Layout
 
