@@ -39,6 +39,7 @@ TABLES = (
     "fact_fixture",
     "dim_player",
     "dim_team",
+    "dim_season_map",
     "dim_region",
     "snap_player_day",
     "fact_player_style",
@@ -158,6 +159,9 @@ METRIC_FROM_SEASON = {
     "xgc": "2022-23",
     "defcon": "2025-26",
 }
+# Club totals need fact_player_gw.team_code, which starts 2020-21.
+TEAM_FROM_SEASON = "2020-21"
+FPL_WEB_FROM = "2016-17"
 
 KEEP_JSON = {"manifest.json", "clusters.json", "metrics_register.json", "status.json"}
 
@@ -253,6 +257,10 @@ def _metric_live(key: str, season: str) -> bool:
     return start is None or season >= start
 
 
+def _team_live(season: str) -> bool:
+    return season >= TEAM_FROM_SEASON
+
+
 def load_rows(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     metrics = _parquet("fact_player_season_metrics")
     avail = _parquet("fact_player_season_availability")
@@ -261,6 +269,7 @@ def load_rows(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     players = _parquet("dim_player")
     teams = _parquet("dim_team")
     regions = _parquet("dim_region")
+    smap = _parquet("dim_season_map")
     team_select = ",\n         ".join(
         f"SUM(t.{col}) AS {key}_team" for key, col in TEAM_MAP.items()
     )
@@ -295,8 +304,14 @@ def load_rows(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
                         ORDER BY gw DESC NULLS LAST
                     ) AS rn
                 FROM read_parquet('{gw}')
+                WHERE team_code IS NOT NULL
             )
             WHERE rn = 1
+        ),
+        map_team AS (
+            SELECT season, player_code, team_code
+            FROM read_parquet('{smap}')
+            WHERE team_code IS NOT NULL
         ),
         ict AS (
             SELECT
@@ -348,8 +363,11 @@ def load_rows(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
           ON r.region_id = p.region
         LEFT JOIN last_team lt
           ON lt.season = m.season AND lt.player_code = m.player_code
+        LEFT JOIN map_team mt
+          ON mt.season = m.season AND mt.player_code = m.player_code
         LEFT JOIN read_parquet('{teams}') tm
-          ON tm.season = lt.season AND tm.code = lt.team_code
+          ON tm.season = m.season
+         AND tm.code = COALESCE(lt.team_code, mt.team_code)
         LEFT JOIN ict i
           ON i.season = m.season AND i.player_code = m.player_code
         LEFT JOIN team_tot tt
@@ -436,7 +454,9 @@ def build_season_rows(
             )
         for key, col in TEAM_MAP.items():
             row[f"{key}_team"] = (
-                _as_round2(rec.get(f"{key}_team")) if _metric_live(key, season) else None
+                _as_round2(rec.get(f"{key}_team"))
+                if _metric_live(key, season) and _team_live(season)
+                else None
             )
         priced = _null_season_cols()
         if season >= PRICE_FROM_SEASON and row["player_code"] is not None:
@@ -534,9 +554,9 @@ def _played_matchlog_rows(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
             p.threat,
             p.ict_index,
             CASE
-                WHEN p.team_code = fx.home_team_code THEN away.short_name
-                WHEN p.team_code = fx.away_team_code THEN home.short_name
-                ELSE opp.short_name
+                WHEN p.team_code = fx.home_team_code THEN COALESCE(away.short_name, away.name)
+                WHEN p.team_code = fx.away_team_code THEN COALESCE(home.short_name, home.name)
+                ELSE COALESCE(opp.short_name, opp.name)
             END AS opp_short,
             fx.kickoff,
             fx.result,
@@ -1033,6 +1053,8 @@ def export() -> dict:
     season_meta = []
     print("web/data export", flush=True)
     for season in sorted(by_season.keys(), reverse=True):
+        if season < FPL_WEB_FROM:
+            continue
         name = f"players_{season}.json"
         keep.add(name)
         rows = by_season[season]
@@ -1056,6 +1078,8 @@ def export() -> dict:
     print("web/data matchlogs", flush=True)
     too_big = []
     for season in sorted(matchlogs.keys(), reverse=True):
+        if season < FPL_WEB_FROM:
+            continue
         if season not in by_season:
             continue
         name = f"matchlogs_{season}.json"

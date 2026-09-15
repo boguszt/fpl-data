@@ -526,6 +526,33 @@ def _weighted_share(g: pd.DataFrame, metric: str) -> float:
     return float((s[mask] * w[mask]).sum() / w[mask].sum())
 
 
+def _uncovered_player_gws(gw: pd.DataFrame, covered: pd.DataFrame) -> pd.DataFrame:
+    """GW rows for player-seasons that never have a team_code."""
+    orphan = gw.loc[gw["player_code"].notna() & gw["team_code"].isna()].copy()
+    if orphan.empty or covered.empty:
+        return orphan
+    keys = covered[["season", "player_code"]].drop_duplicates().assign(_covered=1)
+    orphan = orphan.merge(keys, on=["season", "player_code"], how="left")
+    return orphan.loc[orphan["_covered"].isna()].drop(columns=["_covered"])
+
+
+def _season_metrics_without_team(gw: pd.DataFrame) -> pd.DataFrame:
+    """Season grain only: totals exist, shares and spells do not."""
+    if gw.empty:
+        return pd.DataFrame()
+    agg: dict[str, object] = {"minutes_total": ("minutes", _sum_na)}
+    for m in P90_METRICS:
+        if m in gw.columns:
+            agg[f"{m}_total"] = (m, _sum_na)
+    out = gw.groupby(["season", "player_code"], dropna=False).agg(**agg).reset_index()
+    out["grain"] = "season"
+    out["team_code"] = pd.NA
+    out["spell_count"] = pd.NA
+    for m in SHARE_METRICS:
+        out[f"{m}_share"] = pd.NA
+    return out
+
+
 def build_player_metrics(
     gw: pd.DataFrame,
     fact_team_gw: pd.DataFrame,
@@ -538,8 +565,9 @@ def build_player_metrics(
     team = fact_team_gw[team_share_cols].rename(
         columns={m: f"{m}_team" for m in SHARE_METRICS if m in fact_team_gw.columns}
     )
-    merged = gw.merge(team, on=["season", "gw", "team_code"], how="left")
-    merged = merged.dropna(subset=["player_code", "team_code"])
+    keyed = gw.merge(team, on=["season", "gw", "team_code"], how="left")
+    keyed = keyed.dropna(subset=["player_code"])
+    merged = keyed.dropna(subset=["team_code"])
 
     agg: dict[str, object] = {"minutes_total": ("minutes", _sum_na)}
     for m in P90_METRICS:
@@ -550,41 +578,52 @@ def build_player_metrics(
         if m in merged.columns and team_col in merged.columns:
             agg[f"{m}_team_sum"] = (team_col, _sum_na)
 
-    spell = merged.groupby(["season", "player_code", "team_code"], dropna=False).agg(
-        **{k: v for k, v in agg.items()}
-    ).reset_index()
-    spell["grain"] = "spell"
-    for m in SHARE_METRICS:
-        total_col = f"{m}_total"
-        team_col = f"{m}_team_sum"
-        if total_col in spell.columns and team_col in spell.columns:
-            spell[f"{m}_share"] = _share(spell[total_col], spell[team_col])
-        else:
-            spell[f"{m}_share"] = pd.NA
-
-    n_teams = spell.groupby(["season", "player_code"])["team_code"].transform("nunique")
-    spell["spell_count"] = _to_int(n_teams)
-
-    season_rows = []
-    for (season, player_code), g in spell.groupby(["season", "player_code"], sort=False):
-        row = {
-            "season": season,
-            "player_code": player_code,
-            "team_code": pd.NA,
-            "grain": "season",
-            "spell_count": int(g["spell_count"].iloc[0]),
-            "minutes_total": _sum_na(g["minutes_total"]),
-        }
-        for m in P90_METRICS:
-            col = f"{m}_total"
-            if col in g.columns:
-                row[col] = _sum_na(g[col])
+    if merged.empty:
+        spell = pd.DataFrame()
+        season_df = pd.DataFrame()
+    else:
+        spell = merged.groupby(["season", "player_code", "team_code"], dropna=False).agg(
+            **{k: v for k, v in agg.items()}
+        ).reset_index()
+        spell["grain"] = "spell"
         for m in SHARE_METRICS:
-            row[f"{m}_share"] = _weighted_share(g, m)
-        season_rows.append(row)
-    season_df = pd.DataFrame(season_rows) if season_rows else spell.iloc[0:0].copy()
+            total_col = f"{m}_total"
+            team_col = f"{m}_team_sum"
+            if total_col in spell.columns and team_col in spell.columns:
+                spell[f"{m}_share"] = _share(spell[total_col], spell[team_col])
+            else:
+                spell[f"{m}_share"] = pd.NA
 
-    metrics = pd.concat([spell, season_df], ignore_index=True, sort=False)
+        n_teams = spell.groupby(["season", "player_code"])["team_code"].transform("nunique")
+        spell["spell_count"] = _to_int(n_teams)
+
+        season_rows = []
+        for (season, player_code), g in spell.groupby(["season", "player_code"], sort=False):
+            row = {
+                "season": season,
+                "player_code": player_code,
+                "team_code": pd.NA,
+                "grain": "season",
+                "spell_count": int(g["spell_count"].iloc[0]),
+                "minutes_total": _sum_na(g["minutes_total"]),
+            }
+            for m in P90_METRICS:
+                col = f"{m}_total"
+                if col in g.columns:
+                    row[col] = _sum_na(g[col])
+            for m in SHARE_METRICS:
+                row[f"{m}_share"] = _weighted_share(g, m)
+            season_rows.append(row)
+        season_df = pd.DataFrame(season_rows) if season_rows else spell.iloc[0:0].copy()
+
+    parts = [df for df in (spell, season_df) if df is not None and not df.empty]
+    orphan = _season_metrics_without_team(_uncovered_player_gws(keyed, merged))
+    if not orphan.empty:
+        parts.append(orphan)
+    if not parts:
+        metrics = pd.DataFrame()
+    else:
+        metrics = pd.concat(parts, ignore_index=True, sort=False)
     drop_team_sums = [c for c in metrics.columns if c.endswith("_team_sum")]
     metrics = metrics.drop(columns=drop_team_sums, errors="ignore")
 
@@ -606,13 +645,41 @@ def build_player_metrics(
     return metrics, shrinkage
 
 
+def _season_availability_without_team(gw: pd.DataFrame) -> pd.DataFrame:
+    if gw.empty:
+        return pd.DataFrame()
+    work = gw.copy()
+    if "appearances" not in work.columns:
+        work["appearances"] = (work["minutes"].fillna(0) > 0).astype("int64")
+    if "appearances_60_plus" not in work.columns:
+        work["appearances_60_plus"] = (work["minutes"].fillna(0) >= 60).astype("int64")
+    if "starts" not in work.columns:
+        work["starts"] = pd.NA
+    out = (
+        work.groupby(["season", "player_code"], dropna=False)
+        .agg(
+            minutes=("minutes", _sum_na),
+            appearances=("appearances", _sum_na),
+            starts=("starts", _sum_na),
+            appearances_60_plus=("appearances_60_plus", _sum_na),
+        )
+        .reset_index()
+    )
+    out["grain"] = "season"
+    out["team_code"] = pd.NA
+    out["spell_count"] = pd.NA
+    out["team_matches"] = pd.NA
+    return out
+
+
 def build_availability(
     gw: pd.DataFrame,
     fact_team_gw: pd.DataFrame,
     dim_setpieces: pd.DataFrame,
     positions: pd.DataFrame,
 ) -> pd.DataFrame:
-    work = gw.dropna(subset=["player_code", "team_code"]).copy()
+    keyed = gw.dropna(subset=["player_code"]).copy()
+    work = keyed.dropna(subset=["team_code"])
     mp = fact_team_gw[["season", "gw", "team_code", "matches_played"]].copy()
     work = work.merge(mp, on=["season", "gw", "team_code"], how="left")
     if "appearances" not in work.columns:
@@ -622,33 +689,57 @@ def build_availability(
     work["appearances"] = _num(work["appearances"]).fillna(0)
     work["appearances_60_plus"] = _num(work["appearances_60_plus"]).fillna(0)
 
-    spell = work.groupby(["season", "player_code", "team_code"], dropna=False).agg(
-        minutes=("minutes", _sum_na),
-        appearances=("appearances", _sum_na),
-        starts=("starts", _sum_na),
-        appearances_60_plus=("appearances_60_plus", _sum_na),
-        team_matches=("matches_played", _sum_na),
-    ).reset_index()
-    spell["grain"] = "spell"
-    n_teams = spell.groupby(["season", "player_code"])["team_code"].transform("nunique")
-    spell["spell_count"] = _to_int(n_teams)
-
-    season = (
-        spell.groupby(["season", "player_code"], dropna=False)
-        .agg(
+    if work.empty:
+        spell = pd.DataFrame()
+        season = pd.DataFrame()
+    else:
+        spell = work.groupby(["season", "player_code", "team_code"], dropna=False).agg(
             minutes=("minutes", _sum_na),
-            appearances=("appearances", "sum"),
+            appearances=("appearances", _sum_na),
             starts=("starts", _sum_na),
-            appearances_60_plus=("appearances_60_plus", "sum"),
-            team_matches=("team_matches", _sum_na),
-            spell_count=("spell_count", "max"),
-        )
-        .reset_index()
-    )
-    season["team_code"] = pd.NA
-    season["grain"] = "season"
+            appearances_60_plus=("appearances_60_plus", _sum_na),
+            team_matches=("matches_played", _sum_na),
+        ).reset_index()
+        spell["grain"] = "spell"
+        n_teams = spell.groupby(["season", "player_code"])["team_code"].transform("nunique")
+        spell["spell_count"] = _to_int(n_teams)
 
-    av = pd.concat([spell, season], ignore_index=True, sort=False)
+        season = (
+            spell.groupby(["season", "player_code"], dropna=False)
+            .agg(
+                minutes=("minutes", _sum_na),
+                appearances=("appearances", "sum"),
+                starts=("starts", _sum_na),
+                appearances_60_plus=("appearances_60_plus", "sum"),
+                team_matches=("team_matches", _sum_na),
+                spell_count=("spell_count", "max"),
+            )
+            .reset_index()
+        )
+        season["team_code"] = pd.NA
+        season["grain"] = "season"
+
+    parts = [df for df in (spell, season) if df is not None and not df.empty]
+    orphan = _season_availability_without_team(_uncovered_player_gws(keyed, work))
+    if not orphan.empty:
+        parts.append(orphan)
+    if not parts:
+        av = pd.DataFrame(
+            columns=[
+                "grain",
+                "season",
+                "player_code",
+                "team_code",
+                "spell_count",
+                "minutes",
+                "appearances",
+                "starts",
+                "appearances_60_plus",
+                "team_matches",
+            ]
+        )
+    else:
+        av = pd.concat(parts, ignore_index=True, sort=False)
     av["team_minutes_available"] = _num(av["team_matches"]) * 90.0
     av["minutes_per_appearance"] = pd.Series(np.nan, index=av.index, dtype="float64")
     ok_app = _num(av["appearances"]).fillna(0) > 0

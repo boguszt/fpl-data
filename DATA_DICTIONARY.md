@@ -134,11 +134,13 @@ Grain: `player_code` as of the latest bootstrap (`as_of` date). Penalty / direct
 
 ## `fact_player_season_opta`
 
-Grain: `(season, player_code)`.
+Grain: `(season, pulse_id)`.
 
-Premier League Pulse/Opta season totals from `raw/plstats/`. FPL `code` is the Opta number (`p{code}` = Pulse `altIds.opta`). Pulse `id` is `pulse_id` and is not the FPL code.
+Premier League Pulse/Opta season totals from `raw/plstats/`. FPL `code` is the Opta number (`p{code}` = Pulse `altIds.opta`) **when the player exists in `dim_player`**. `player_code` is filled only on that match and is NULL for the pre-FPL archive. Pulse `id` is `pulse_id` and is the grain for every season, including 1992-93–2015-16.
 
-Every stat name the API returned is a column (union across seasons; earlier years NULL). Derived, NULL when the denominator is 0, never a fake zero:
+Do not put Pulse-only people on `dim_player` — that table is the FPL universe. They live on `dim_player_opta`.
+
+Every stat name the API returned is a column (union across seasons; earlier years NULL). Missing fields are not an error: 1990s payloads are sparse. Derived, NULL when the denominator is 0, never a fake zero:
 
 - `pass_accuracy` = `accurate_pass / total_pass`
 - `cross_accuracy` = `accurate_cross / total_cross`
@@ -146,9 +148,17 @@ Every stat name the API returned is a column (union across seasons; earlier year
 - `aerial_win_pct` = `aerial_won / (aerial_won + aerial_lost)`
 - `shot_accuracy` = `ontarget_scoring_att / total_scoring_att`
 
-Census is ranked appearances, not `/football/players`. Closed seasons are a one-shot archive; the current season refreshes on both GitHub crons (06:00 and 18:00 UTC). Always fetch; write a new dated dump only when bytes change. A second snapshot on the same UTC day lands at `{YYYY-MM-DD}/{HHMM}/`.
+Census is ranked appearances, not `/football/players`. Closed seasons are a one-shot archive from **1992-93**; the current season refreshes on both GitHub crons (06:00 and 18:00 UTC). Always fetch; write a new dated dump only when bytes change. A second snapshot on the same UTC day lands at `{YYYY-MM-DD}/{HHMM}/`. Coverage boundaries (first season any player has the field, first season ≥50% of that year's squad has it, last season) are in `data/opta_coverage.csv`.
 
-Shipped core/extended Opta fields are exported as `web/data/opta_{season}.json`, an object keyed by `player_code` (string) in the same shape as `style_{season}.json`. Counts are `o_{field}_total`; derived ratios are `o_{field}`. Null keys are omitted. Archive Opta columns stay mart-only. Nothing Opta is written to `players_{season}.json` or match logs.
+Shipped core/extended Opta fields are exported as `web/data/opta_{season}.json` for FPL seasons only, an object keyed by `player_code` (string) in the same shape as `style_{season}.json`. Counts are `o_{field}_total`; derived ratios are `o_{field}`. Null keys are omitted. Archive Opta columns stay mart-only. Nothing Opta is written to `players_{season}.json` or match logs. Pre-2016-17 seasons are not in `manifest.json`.
+
+## `dim_player_opta`
+
+Grain: `pulse_id`.
+
+Players who appear in the Pulse archive but never in `dim_player` (no FPL row). `opta_code` is Pulse `altIds.opta` stripped of the leading `p`. `name` is the latest display name we saw. `first_season` / `last_season` span the archive, not FPL.
+
+This is identity for the historical dump, not a join key onto FPL tables. Do not invent a mapping.
 
 ## `fact_player_style`
 
@@ -213,9 +223,9 @@ Things measured **about the team** while a player is on the pitch cannot be summ
 
 `matches_played`: distinct played fixtures for that team in that GW (1 normally, 2 in a DGW). Taken from `fact_fixture` rows with a `result`. If fixture rows are missing but the team recorded minutes, falls back to 1.
 
-Requires `fact_player_gw.team_code`. That column is populated from 2020-21; 2016-17–2019-20 rows currently have NULL `team_code`, so this mart (and spell shares) start in 2020-21.
+Requires `fact_player_gw.team_code`. That column is populated from 2020-21; 2016-17–2019-20 have no `fact_team_gw` rows.
 
-Web: `web/data/teams_{season}.json` (2020-21 onward, keyed by `team_code`) and `web/data/fixtures_{season}.json` (every season, played and unplayed). Both fold under the FPL fetch in `status.json`. Current-season fixtures rewrite when a result or reschedule changes the payload; past seasons are frozen.
+Web: `web/data/teams_{season}.json` (2020-21 onward, keyed by `team_code`) and `web/data/fixtures_{season}.json` (every season, played and unplayed). `players_{season}.json` / `matchlogs_{season}.json` / `opta_{season}.json` cover FPL seasons from **2016-17**. Club-share columns (`{key}_team`) are NULL before 2020-21; xG family NULL before 2022-23; defensive contribution NULL before 2025-26. No `pricehistory_*.json` or `style_*.json` before 2021-22 / clustered seasons. Both team and fixture files fold under the FPL fetch in `status.json`. Current-season fixtures rewrite when a result or reschedule changes the payload; past seasons are frozen.
 
 ### `fact_player_season_metrics`
 
@@ -228,6 +238,8 @@ Two grains in one table, distinguished by `grain` and `team_code`:
 
 A mid-season transfer gets two spell rows plus one season row. Spell totals must sum to the season totals. Shares are **not** season-level player/team over all 38: they are `SUM(player stat in GWs at club X) / SUM(team X stat in those same GWs)`, using registration GWs (including 0-minute benches). The season-grain share is a **minutes-weighted blend** of the spell shares.
 
+`fact_player_gw.team_code` is populated from 2020-21. 2016-17–2019-20 still have season-grain rows (totals, per-90, adj90); they have no spell rows, `spell_count` is NULL, and every `*_share` is NULL. Missing team is not a reason to drop the season.
+
 `element_type` is that season's position from `players_raw` / current bootstrap, not `dim_player.current_element_type`.
 
 Goalkeeping metrics (`saves`, `penalties_saved`) have adj90 only for `element_type = 1`; outfield rows are NULL.
@@ -236,7 +248,7 @@ Direction: `data/metric_direction.csv` (`dim_metric` in the marts). `direction =
 
 ### `fact_player_season_availability`
 
-Same spell / season grain as the metrics table.
+Same spell / season grain as the metrics table. 2016-17–2019-20 are season-grain only: `team_minutes_available` and `minutes_share` are NULL.
 
 `appearances` = matches with minutes > 0 (not distinct gameweeks). `appearances_60_plus` = matches of at least 60 minutes. A double gameweek of 90 and 75 is two appearances and two 60+ matches. `minutes_per_appearance` = minutes / appearances.
 
@@ -289,7 +301,7 @@ FPL `region` is a bare integer on bootstrap / `dim_player`. Names come from FPL 
 | `raw/bootstrap/{YYYY-MM-DD}/{HHMM}.json.gz` | FPL bootstrap-static. Written **every run**, even on identical bytes — the timestamp is the data. Never deduped. |
 | `raw/event-status/{YYYY-MM-DD}/{HHMM}.json` | FPL event-status |
 | `raw/live/{season}/gw{N}.json` | FPL event/{gw}/live |
-| `raw/plstats/{season}/appearances.json` | Pulse ranked appearances (verbatim). Closed seasons. |
+| `raw/plstats/{season}/appearances.json` | Pulse ranked appearances (verbatim). Closed seasons, 1992-93 onward. |
 | `raw/plstats/{season}/players/{pulse_id}.json` | Pulse `/stats/player/{id}` season totals. Closed seasons; skip if present. |
 | `raw/plstats/{season}/{YYYY-MM-DD}/…` | Current-season dated snapshot. Always fetched on both crons; written only when bytes change. Same-day second dump: `{YYYY-MM-DD}/{HHMM}/`. |
 | `raw/feed_fetch/{YYYY-MM-DD}/{HHMM}.json` | Per-feed `as_of` (last successful HTTP fetch, including no-op unchanged pulls). Written every `ingest/update.py` run. |
