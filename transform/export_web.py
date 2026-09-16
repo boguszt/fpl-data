@@ -166,6 +166,54 @@ FPL_WEB_FROM = "2016-17"
 KEEP_JSON = {"manifest.json", "clusters.json", "metrics_register.json", "status.json"}
 
 
+def _snap_covers_price_history(snaps: pd.DataFrame) -> bool:
+    """True when snap_player_day includes fplcache seasons from PRICE_FROM_SEASON."""
+    if snaps.empty:
+        return False
+    return PRICE_FROM_SEASON in set(snaps["season"].astype(str))
+
+
+def _keep_existing_pricehistory(keep: set[str]) -> list[str]:
+    names = sorted(path.name for path in WEB_DATA.glob("pricehistory_*.json"))
+    keep.update(names)
+    return names
+
+
+def _reuse_matchlog_prices(matchlogs: dict[str, dict[str, list[dict]]]) -> int:
+    """Copy deadline prices from committed JSON when this export has no snap coverage."""
+    filled = 0
+    for season, players in matchlogs.items():
+        path = WEB_DATA / f"matchlogs_{season}.json"
+        if not path.exists():
+            continue
+        try:
+            old = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(old, dict):
+            continue
+        for code, rows in players.items():
+            prev_rows = old.get(code)
+            if not isinstance(prev_rows, list):
+                continue
+            prev_by_gw = {
+                item["gw"]: item
+                for item in prev_rows
+                if isinstance(item, dict) and item.get("gw") is not None
+            }
+            for row in rows:
+                if row.get("price") is not None:
+                    continue
+                prev = prev_by_gw.get(row.get("gw"))
+                if not prev or prev.get("price") is None:
+                    continue
+                row["price"] = prev["price"]
+                if row.get("price_delta") is None and "price_delta" in prev:
+                    row["price_delta"] = prev["price_delta"]
+                filled += 1
+    return filled
+
+
 def _parquet(name: str) -> str:
     return (MARTS / f"{name}.parquet").as_posix()
 
@@ -1043,6 +1091,15 @@ def export() -> dict:
         if season >= PRICE_FROM_SEASON
     }
     histories = {season: players for season, players in histories.items() if players}
+    if not _snap_covers_price_history(snaps):
+        print(
+            f"snap_player_day does not cover {PRICE_FROM_SEASON} (no fplcache). "
+            "Keeping committed pricehistory_*.json and matchlog deadline prices.",
+            flush=True,
+        )
+        n_reused = _reuse_matchlog_prices(matchlogs)
+        print(f"  reused {n_reused} matchlog deadline prices from existing JSON", flush=True)
+        histories = {}
     validate_pricehistory(histories, price_cols, by_season, matchlogs)
     coverage = _matchlog_coverage(log_frame)
     WEB_DATA.mkdir(parents=True, exist_ok=True)
@@ -1119,40 +1176,48 @@ def export() -> dict:
         )
 
     print("web/data pricehistory", flush=True)
-    pricehistory_blobs: dict[str, bytes] = {}
-    pricehistory_total = 0
-    for season in sorted(histories.keys(), reverse=True):
-        blob = json.dumps(
-            histories[season],
-            ensure_ascii=False,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8")
-        pricehistory_blobs[season] = blob
-        pricehistory_total += len(blob)
+    if not histories:
+        kept = _keep_existing_pricehistory(keep)
         print(
-            f"  {'pricehistory_' + season + '.json':28} {len(blob):8,} bytes  "
-            f"{len(histories[season]):4} players",
+            "  skipped rebuild; keeping "
+            + (", ".join(kept) if kept else "none"),
             flush=True,
         )
-    print(f"  pricehistory total {pricehistory_total:,} bytes", flush=True)
-    if pricehistory_total > 25 * 1024 * 1024:
-        print(
-            "STOP: pricehistory_*.json total exceeds 25 MB. "
-            "Not writing those files. Options: weekly ownership for completed "
-            "seasons, or one season per commit.",
-            flush=True,
-        )
-        raise SystemExit(1)
-    for season, blob in pricehistory_blobs.items():
-        name = f"pricehistory_{season}.json"
-        keep.add(name)
-        path = WEB_DATA / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if path.exists() and path.read_bytes() == blob:
-            print(f"  {name:28} unchanged", flush=True)
-            continue
-        path.write_bytes(blob)
+    else:
+        pricehistory_blobs: dict[str, bytes] = {}
+        pricehistory_total = 0
+        for season in sorted(histories.keys(), reverse=True):
+            blob = json.dumps(
+                histories[season],
+                ensure_ascii=False,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+            pricehistory_blobs[season] = blob
+            pricehistory_total += len(blob)
+            print(
+                f"  {'pricehistory_' + season + '.json':28} {len(blob):8,} bytes  "
+                f"{len(histories[season]):4} players",
+                flush=True,
+            )
+        print(f"  pricehistory total {pricehistory_total:,} bytes", flush=True)
+        if pricehistory_total > 25 * 1024 * 1024:
+            print(
+                "STOP: pricehistory_*.json total exceeds 25 MB. "
+                "Not writing those files. Options: weekly ownership for completed "
+                "seasons, or one season per commit.",
+                flush=True,
+            )
+            raise SystemExit(1)
+        for season, blob in pricehistory_blobs.items():
+            name = f"pricehistory_{season}.json"
+            keep.add(name)
+            path = WEB_DATA / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.exists() and path.read_bytes() == blob:
+                print(f"  {name:28} unchanged", flush=True)
+                continue
+            path.write_bytes(blob)
 
     print("web/data clusters", flush=True)
     style_catalog_changed = export_style_json(keep)
