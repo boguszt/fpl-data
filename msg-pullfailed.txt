@@ -1,0 +1,14 @@
+The site will still open with whatever is already on this computer.
+
+If git said it could not reach GitHub, there is no network. Check the
+connection and double-click this file again.
+
+If git said local changes would be overwritten, or asked you to commit or
+stash, that is usually caused by uncommitted edits in this folder. Cursor
+often leaves some. Git will not overwrite those. Commit or stash the edits,
+then double-click this file again.
+
+If git said the branches have diverged, or that a merge conflicted, this
+folder and GitHub both changed the same files. Open a terminal in this
+folder, inspect the listed files, and do not hand-edit generated JSON
+under web/data. Then double-click this file again.
