@@ -30,7 +30,12 @@ def main() -> None:
         event_status = client.snapshot_event_status()
         print("=== vaastav current season refresh ===")
         if client.download_vaastav(current_season=season):
-            feeds["vaastav"] = {"as_of": utc_iso()}
+            feeds["vaastav"] = {
+                "as_of": utc_iso(),
+                "note": "merged_gw, players_raw, fixtures",
+            }
+        else:
+            print("vaastav live season fetch failed; keeping previous as_of", flush=True)
         print("=== fixtures ===")
         client.snapshot_fixtures(bootstrap)
         gws = finalised_gameweeks(bootstrap, event_status)

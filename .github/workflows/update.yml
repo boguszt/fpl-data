@@ -18,6 +18,8 @@ jobs:
       FPL_REQUIRE_FRESH_FEEDS: "1"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
@@ -34,7 +36,7 @@ jobs:
             echo "no raw changes"
           else
             git commit -m "chore: fpl raw snapshots"
-            git push
+            bash .github/scripts/integrate-and-push.sh
           fi
       - name: Rebuild marts from raw
         run: uv run python -m transform.build
@@ -63,4 +65,4 @@ jobs:
             exit 1
           fi
           git commit -m "chore: web player-table json"
-          git push
+          bash .github/scripts/integrate-and-push.sh

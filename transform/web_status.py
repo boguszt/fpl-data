@@ -19,6 +19,7 @@ SCHEDULED_FEEDS = ("fpl", "opta", "vaastav")
 FEED_NOTES = {
     "fpl": "bootstrap snapshot, fixtures",
     "opta": "season totals",
+    "vaastav": "merged_gw, players_raw, fixtures",
     "style": "fitted model, rebuilt on demand",
 }
 
@@ -37,6 +38,14 @@ def _load_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _iso_from_mtime(path: Path) -> str | None:
+    try:
+        ts = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    except OSError:
+        return None
+    return utc_iso(ts)
 
 
 def _iso_from_dated_rel(path: Path, root: Path) -> str | None:
@@ -92,10 +101,12 @@ def _as_of_from(
     prev: dict[str, Any],
     fallback: str | None,
 ) -> str | None:
+    # Last successful fetch wins; raw-file fallback before a stale status.json
+    # so a later snapshot is not stuck on an older as_of.
     for src in (
         ((stamps.get("feeds") or {}).get(name) or {}).get("as_of"),
-        ((prev.get("feeds") or {}).get(name) or {}).get("as_of"),
         fallback,
+        ((prev.get("feeds") or {}).get(name) or {}).get("as_of"),
     ):
         if src:
             return str(src)
@@ -114,7 +125,7 @@ def _fallback_vaastav(season: str) -> str | None:
     path = latest_vaastav_file(season, "merged_gw.csv")
     if path is None:
         return None
-    return _iso_from_dated_rel(path, RAW / "vaastav" / season)
+    return _iso_from_dated_rel(path, RAW / "vaastav" / season) or _iso_from_mtime(path)
 
 
 def _fallback_opta(season: str) -> str | None:

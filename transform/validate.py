@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import pandas as pd
 
 
@@ -9,7 +11,10 @@ class MartValidationError(AssertionError):
 
 def _print_table(title: str, df: pd.DataFrame) -> None:
     print(f"\n== {title} ==")
-    print(df.to_string(index=False))
+    text = df.to_string(index=False)
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    sys.stdout.buffer.write((text + "\n").encode(encoding, errors="replace"))
+    sys.stdout.buffer.flush()
 
 
 def validate_marts(con, extra_checks: dict) -> None:
