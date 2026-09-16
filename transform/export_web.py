@@ -19,6 +19,7 @@ from transform.metric_copy import OPTA_COUNTS, OPTA_RATIOS, STYLE_COPY, STYLE_FE
 from transform.web_price import (
     NULL_PRICE_SEASONS,
     PRICE_FROM_SEASON,
+    SEASON_PRICE_KEYS,
     build_pricehistory,
     load_gw_deadlines,
     load_snap_frame,
@@ -171,6 +172,42 @@ def _snap_covers_price_history(snaps: pd.DataFrame) -> bool:
     if snaps.empty:
         return False
     return PRICE_FROM_SEASON in set(snaps["season"].astype(str))
+
+
+def _reuse_player_price_columns(
+    by_season: dict[str, list[dict]], snap_seasons: set[str]
+) -> int:
+    """Copy price/own columns from committed player JSON when snaps omit that season."""
+    filled = 0
+    for season, rows in by_season.items():
+        if season < PRICE_FROM_SEASON or season in snap_seasons:
+            continue
+        path = WEB_DATA / f"players_{season}.json"
+        if not path.exists():
+            continue
+        try:
+            old_rows = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(old_rows, list):
+            continue
+        by_code = {
+            str(item["player_code"]): item
+            for item in old_rows
+            if isinstance(item, dict) and item.get("player_code") is not None
+        }
+        for row in rows:
+            prev = by_code.get(str(row.get("player_code")))
+            if not prev:
+                continue
+            for key in SEASON_PRICE_KEYS:
+                if row.get(key) is not None:
+                    continue
+                if prev.get(key) is None:
+                    continue
+                row[key] = prev[key]
+                filled += 1
+    return filled
 
 
 def _keep_existing_pricehistory(keep: set[str]) -> list[str]:
@@ -1091,14 +1128,20 @@ def export() -> dict:
         if season >= PRICE_FROM_SEASON
     }
     histories = {season: players for season, players in histories.items() if players}
+    snap_seasons = set() if snaps.empty else set(snaps["season"].astype(str))
     if not _snap_covers_price_history(snaps):
         print(
             f"snap_player_day does not cover {PRICE_FROM_SEASON} (no fplcache). "
-            "Keeping committed pricehistory_*.json and matchlog deadline prices.",
+            "Keeping committed pricehistory_*.json and matchlog/player prices.",
             flush=True,
         )
         n_reused = _reuse_matchlog_prices(matchlogs)
         print(f"  reused {n_reused} matchlog deadline prices from existing JSON", flush=True)
+        n_player_prices = _reuse_player_price_columns(by_season, snap_seasons)
+        print(
+            f"  reused {n_player_prices} player price/own fields from existing JSON",
+            flush=True,
+        )
         histories = {}
     validate_pricehistory(histories, price_cols, by_season, matchlogs)
     coverage = _matchlog_coverage(log_frame)
